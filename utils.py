@@ -53,3 +53,59 @@ def print_graph(graph):
     for row in graph:
         print(row)
     print("----- GRAPH PRINTED -----")
+
+# graph - list of lists, each list containing an int
+# vertex - starting vertex. int representing the index of the sublist
+def greedy_algorithm(graph, vertex):
+    vertices = len(graph)
+    # sets an array of values that represent whether or not a vertex has been visited b4
+    visited = [False] * vertices
+    cycle = [vertex]
+    total_weight = 0
+    visited[vertex] = True
+
+    current_vertex = vertex
+
+    for i in range(vertices - 1):
+        # initialize variable to store next vertex
+        next_vertex = -1
+
+        # set initial lowest weight to infinity
+        lowest_weight = float('inf')
+        for j in range(vertices):
+            if not visited[i] and graph[current_vertex][i] < lowest_weight:
+                lowest_weight = graph[current_vertex][i]
+                next_vertex = i
+
+        cycle.append(next_vertex)
+        # continue here
+
+
+    return cycle, total_weight
+
+
+def low_anchor_heuristic(graph, vertex):
+    cycle = []
+    total_weight = 0
+
+    return cycle, total_weight
+
+def high_anchor_heuristic(graph, vertex):
+    cycle = []
+    total_weight = 0
+
+    return cycle, total_weight
+
+def random_anchor_heuristic(graph, vertex):
+    cycle = []
+    total_weight = 0
+
+    return cycle, total_weight
+
+def run_benchmark(graph, vertex):
+    results = {}
+    results["greedy"] = greedy_algorithm(graph, vertex)
+    results["low_anchor"] = low_anchor_heuristic(graph, vertex)
+    results["high_anchor"] = high_anchor_heuristic(graph, vertex)
+    results["random_anchor"] = random_anchor_heuristic(graph, vertex)
+    return results
