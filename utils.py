@@ -1,5 +1,7 @@
 import random
 import itertools
+import json
+import csv
 
 # Function to create a complete graph with weighted edges.
 # Parameters:
@@ -111,27 +113,181 @@ def find_optimal_cycle(graph, vertex):
 
 # Fixing the anchor-based heuristic: ensure all vertices are visited before returning to start
 
-def construct_greedy_cycle(graph, start, anchors):
+
+def construct_greedy_cycle(graph, start, anchor1, anchor2):
     """Constructs a greedy cycle given a start vertex and 2 anchor points. Ensures Hamiltonian cycle."""
-    return
-# try to debug this.
-# still not working.
+    vertices_count = len(graph)
+    
+    # Initialize with only the start point in the visited set
+    visited = set([start])
+    path = [start]
+    current_vertex = start
+    total_weight = 0
+    
+    # First, we need to visit anchor1
+    if anchor1 not in visited:
+        path.append(anchor1)
+        visited.add(anchor1)
+        total_weight += graph[current_vertex][anchor1]
+        current_vertex = anchor1
+        #print(f"Added anchor1: {anchor1}")
+        #print(f"Visited: {visited}")
+    
+    # Visit all remaining vertices except anchor2
+    while len(visited) < vertices_count - 1:  # -1 because we'll add anchor2 last
+        next_vertex = None
+        lowest_weight = float("inf")
+        
+        for i in range(vertices_count):
+            if i not in visited and i != anchor2 and graph[current_vertex][i] < lowest_weight:
+                next_vertex = i
+                lowest_weight = graph[current_vertex][i]
+        
+        # If we can't find a next vertex, break the loop
+        if next_vertex is None:
+            break
+            
+        #print(f"Adding vertex: {next_vertex}")
+        visited.add(next_vertex)
+        path.append(next_vertex)
+        total_weight += lowest_weight
+        current_vertex = next_vertex
+        #print(f"Visited: {visited}")
+    
+    # Now add anchor2 if it's not already visited
+    if anchor2 not in visited:
+        #print("Adding second anchor!!!")
+        path.append(anchor2)
+        visited.add(anchor2)
+        total_weight += graph[current_vertex][anchor2]
+        current_vertex = anchor2
+        #print(f"Added anchor2: {anchor2}")
+        #print(f"Visited: {visited}")
+    
+    # Complete the cycle by returning to start
+    total_weight += graph[current_vertex][start]
+    path.append(start)
+    
+    return path, total_weight
+    
 
 def low_anchor_heuristic(graph, vertex):
-    return
+    def find_two_lowest_indices(values, vertex):
+        if len(values) < 2:
+            raise ValueError("List must contain at least two elements.")
+        sorted_indices = sorted((i for i in range(len(values)) if i != vertex), key=lambda i: values[i])
+        return sorted_indices[:2]
+    anchors = find_two_lowest_indices(graph[vertex], vertex)
+    # print(f"Anchors for {vertex}: {anchors}")
+
+    cycle_1, lowest_weight_1 = construct_greedy_cycle(graph, vertex, anchors[0], anchors[1])
+    cycle_2, lowest_weight_2 = construct_greedy_cycle(graph, vertex, anchors[1], anchors[0])
+
+    if lowest_weight_1 < lowest_weight_2:
+        return cycle_1, lowest_weight_1 
+    return cycle_2, lowest_weight_2
 
 def high_anchor_heuristic(graph, vertex):
-    return
+    def find_two_highest_indices(values, vertex):
+        if len(values) < 2:
+            raise ValueError("List must contain at least two elements.")
+        sorted_indices = sorted(
+            (i for i in range(len(values)) if i != vertex),
+            key=lambda i: values[i],
+            reverse=True  # Sort from highest to lowest
+        )
+        return sorted_indices[:2]
+    
+
+    anchors = find_two_highest_indices(graph[vertex], vertex)
+    # print(f"Anchors for {vertex}: {anchors}")
+
+    cycle_1, lowest_weight_1 = construct_greedy_cycle(graph, vertex, anchors[0], anchors[1])
+    cycle_2, lowest_weight_2 = construct_greedy_cycle(graph, vertex, anchors[1], anchors[0])
+
+    if lowest_weight_1 < lowest_weight_2:
+        return cycle_1, lowest_weight_1 
+    return cycle_2, lowest_weight_2
 
 def random_anchor_heuristic(graph, vertex):
-    return
+    def find_two_random_indices(values, vertex):
+        if len(values) < 3:
+            raise ValueError("List must contain at least three elements to exclude one and pick two.")
+
+        candidates = [i for i in range(len(values)) if i != vertex]
+        return random.sample(candidates, 2)
+
+    anchors = find_two_random_indices(graph[vertex], vertex)
+    # rint(f"Anchors for {vertex}: {anchors}")
+
+    cycle_1, lowest_weight_1 = construct_greedy_cycle(graph, vertex, anchors[0], anchors[1])
+    cycle_2, lowest_weight_2 = construct_greedy_cycle(graph, vertex, anchors[1], anchors[0])
+
+    if lowest_weight_1 < lowest_weight_2:
+        return cycle_1, lowest_weight_1 
+    return cycle_2, lowest_weight_2
 
 
 def run_benchmark(graph, vertex):
     results = {}
     results["optimal"] = find_optimal_cycle(graph, vertex)
     results["greedy"] = greedy_algorithm(graph, vertex)
-    # results["low_anchor"] = low_anchor_heuristic(graph, vertex)
-    # results["high_anchor"] = high_anchor_heuristic(graph, vertex)
-    # results["random_anchor"] = random_anchor_heuristic(graph, vertex)
+    results["low_anchor"] = low_anchor_heuristic(graph, vertex)
+    results["high_anchor"] = high_anchor_heuristic(graph, vertex)
+    results["random_anchor"] = random_anchor_heuristic(graph, vertex)
     return results
+
+def save_adjacency_matrix(matrix, filename, format="csv"):
+    """
+    Save an adjacency matrix to a file.
+    
+    Parameters:
+    - matrix: 2D list representing the adjacency matrix
+    - filename: Name of the file to save to
+    - format: File format, either 'csv' or 'json' (default: 'csv')
+    """
+    if format.lower() == "csv":
+        with open(filename, 'w', newline='') as file:
+            writer = csv.writer(file)
+            for row in matrix:
+                writer.writerow(row)
+        print(f"Adjacency matrix saved to {filename} in CSV format")
+    
+    elif format.lower() == "json":
+        with open(filename, 'w') as file:
+            json.dump(matrix, file)
+        print(f"Adjacency matrix saved to {filename} in JSON format")
+    
+    else:
+        raise ValueError("Unsupported format. Use 'csv' or 'json'")
+
+
+def load_adjacency_matrix(filename, format="csv"):
+    """
+    Load an adjacency matrix from a file.
+    
+    Parameters:
+    - filename: Name of the file to load from
+    - format: File format, either 'csv' or 'json' (default: 'csv')
+    
+    Returns:
+    - 2D list representing the adjacency matrix
+    """
+    if format.lower() == "csv":
+        matrix = []
+        with open(filename, 'r', newline='') as file:
+            reader = csv.reader(file)
+            for row in reader:
+                # Convert strings to appropriate numeric values
+                matrix.append([float(val) if '.' in val else int(val) for val in row])
+        print(f"Adjacency matrix loaded from {filename}")
+        return matrix
+    
+    elif format.lower() == "json":
+        with open(filename, 'r') as file:
+            matrix = json.load(file)
+        print(f"Adjacency matrix loaded from {filename}")
+        return matrix
+    
+    else:
+        raise ValueError("Unsupported format. Use 'csv' or 'json'")
