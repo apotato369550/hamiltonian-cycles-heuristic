@@ -2,6 +2,7 @@ import random
 import itertools
 import json
 import csv
+import functools
 
 # Function to create a complete graph with weighted edges.
 # Parameters:
@@ -112,6 +113,120 @@ def find_optimal_cycle(graph, vertex):
     return best_cycle, lowest_weight
 
 # Fixing the anchor-based heuristic: ensure all vertices are visited before returning to start
+
+def find_optimal_cycle_held_karp(graph, start_vertex):
+    """
+    Find the optimal Hamiltonian cycle (TSP solution) using the Held-Karp dynamic programming algorithm.
+    
+    Parameters:
+    - graph: Adjacency matrix represented as a list of lists with edge weights
+    - start_vertex: The vertex to start and end the cycle at
+    
+    Returns:
+    - A tuple containing (optimal_cycle, optimal_weight)
+    """
+    n = len(graph)
+    
+    # Handle trivial cases
+    if n <= 1:
+        return [start_vertex, start_vertex], 0
+    if n == 2:
+        return [start_vertex, 1-start_vertex, start_vertex], graph[start_vertex][1-start_vertex] * 2
+    
+    # Convert vertex indices to 0..n-1 for ease of bit manipulation
+    # We'll convert back at the end
+    original_start = start_vertex
+    
+    # Create memo table for storing results of subproblems
+    # memo[(S, v)] = (cost, predecessor)
+    # where S is a set of vertices (represented as a bitmask)
+    # and v is the last vertex visited
+    memo = {}
+    
+    # Initialize base cases: distance from start to every other vertex
+    for v in range(n):
+        if v != start_vertex:
+            # Set S contains only vertex v
+            S = 1 << v
+            memo[(S, v)] = (graph[start_vertex][v], start_vertex)
+    
+    # Solve for subsets of increasing size
+    for subset_size in range(2, n):
+        for subset in itertools.combinations(range(n), subset_size):
+            # Skip if the subset contains the start vertex
+            if start_vertex in subset:
+                continue
+                
+            # Create bitmask for this subset
+            S = 0
+            for v in subset:
+                S |= 1 << v
+                
+            # For each vertex in the subset
+            for v in subset:
+                # Create bitmask without vertex v
+                S_v = S & ~(1 << v)
+                
+                min_cost = float('inf')
+                min_prev = None
+                
+                # Try all possible previous vertices
+                for u in subset:
+                    if u == v:
+                        continue
+                        
+                    # Calculate cost of reaching v through u
+                    cost = memo[(S_v, u)][0] + graph[u][v]
+                    
+                    if cost < min_cost:
+                        min_cost = cost
+                        min_prev = u
+                
+                # Store result
+                memo[(S, v)] = (min_cost, min_prev)
+    
+    # Find optimal cost to return to start_vertex
+    all_vertices_except_start = 0
+    for v in range(n):
+        if v != start_vertex:
+            all_vertices_except_start |= 1 << v
+    
+    min_cost_back = float('inf')
+    min_last = None
+    for v in range(n):
+        if v != start_vertex:
+            cost = memo[(all_vertices_except_start, v)][0] + graph[v][start_vertex]
+            if cost < min_cost_back:
+                min_cost_back = cost
+                min_last = v
+    
+    # Reconstruct the optimal path
+    optimal_path = [start_vertex]
+    
+    # Start from the last vertex before returning to start
+    S = all_vertices_except_start
+    v = min_last
+    
+    # Trace backward until we reach the start
+    while v != start_vertex:
+        optimal_path.append(v)
+        
+        # Get previous vertex in the path
+        prev_v = memo[(S, v)][1]
+        
+        # Update S by removing v
+        S &= ~(1 << v)
+        
+        # Move to previous vertex
+        v = prev_v
+    
+    # Complete the cycle by returning to the start
+    optimal_path.append(start_vertex)
+    
+    # The path is in reverse order, so reverse it
+    optimal_path.reverse()
+    
+    return optimal_path, min_cost_back
 
 
 def construct_greedy_cycle(graph, start, anchor1, anchor2):
@@ -230,7 +345,8 @@ def random_anchor_heuristic(graph, vertex):
 
 def run_benchmark(graph, vertex):
     results = {}
-    results["optimal"] = find_optimal_cycle(graph, vertex)
+    results["optimal_brute_force"] = find_optimal_cycle(graph, vertex)
+    results["optimal_held_karp"] = find_optimal_cycle_held_karp(graph, vertex)
     results["greedy"] = greedy_algorithm(graph, vertex)
     results["low_anchor"] = low_anchor_heuristic(graph, vertex)
     results["high_anchor"] = high_anchor_heuristic(graph, vertex)
