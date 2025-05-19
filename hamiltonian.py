@@ -1,4 +1,4 @@
-def hamiltonian_cycle_heuristic(graph, start, anchors, max_depth=-1, early_exit=False):
+def hamiltonian_cycle_heuristic(graph, start, anchors=None, max_depth=-1, early_exit=False):
     """
     Implements a Hamiltonian cycle heuristic based on an anchor-based greedy approach with constraints and adaptive bridging depth.
     
@@ -6,6 +6,7 @@ def hamiltonian_cycle_heuristic(graph, start, anchors, max_depth=-1, early_exit=
         graph: A complete, weighted graph represented as an adjacency matrix (list of lists of integers).
         start: The starting vertex, which is one of the anchor vertices.
         anchors: A list of integers representing the anchor vertices (including start).
+                If None, anchors will be generated randomly based on graph size.
         max_depth: Maximum number of intermediate vertices allowed when connecting one anchor to the next.
                   If -1, an adaptive depth strategy is used.
         early_exit: If True, greedily connect to the target anchor if it's the lowest-cost edge available.
@@ -16,9 +17,24 @@ def hamiltonian_cycle_heuristic(graph, start, anchors, max_depth=-1, early_exit=
         - total_weight: The sum of weights in the cycle
     """
     import itertools
+    import random
+    
+    # Get number of vertices in the graph
+    n = len(graph)
+    
+    # If anchors is not provided, generate them randomly
+    if anchors is None:
+        # Calculate number of anchors based on n = 4k formula
+        # k = n/4, where k is number of anchors
+        k = max(2, n // 4)  # Ensure at least 2 anchors
+        
+        # Ensure start is included in anchors
+        potential_anchors = [v for v in range(n) if v != start]
+        # Randomly select k-1 additional anchors (start is already one anchor)
+        random_anchors = random.sample(potential_anchors, k-1)
+        anchors = [start] + random_anchors
     
     # 1. Sanity checks
-    n = len(graph)  # Number of vertices
     k = len(anchors)  # Number of anchors
     
     if n < 4 * k:
@@ -77,6 +93,9 @@ def _build_cycle_from_anchors(graph, anchor_path, n, max_depth, early_exit):
     cycle = [anchor_path[0]]  # Start with the first anchor
     total_weight = 0
     
+    # Set of all anchors for blacklisting direct anchor-to-anchor connections
+    all_anchors = set(anchor_path)
+    
     # Calculate total non-anchor vertices to distribute
     total_non_anchors = n - len(set(anchor_path))
     num_bridges = len(anchor_path) - 1
@@ -105,7 +124,7 @@ def _build_cycle_from_anchors(graph, anchor_path, n, max_depth, early_exit):
         depth = 0
         
         while current != to_anchor and depth < current_bridge_vertices:
-            next_vertex = _find_next_vertex(graph, current, visited, to_anchor, early_exit)
+            next_vertex = _find_next_vertex(graph, current, visited, to_anchor, early_exit, all_anchors)
             
             # If we found a valid next vertex
             if next_vertex is not None:
@@ -154,7 +173,7 @@ def _build_cycle_from_anchors(graph, anchor_path, n, max_depth, early_exit):
     
     return cycle, total_weight
 
-def _find_next_vertex(graph, current, visited, target, early_exit):
+def _find_next_vertex(graph, current, visited, target, early_exit, all_anchors=None):
     """
     Finds the next vertex to visit using a greedy approach.
     
@@ -164,6 +183,7 @@ def _find_next_vertex(graph, current, visited, target, early_exit):
         visited: Set of already visited vertices
         target: Target anchor vertex
         early_exit: If True, connect to target if it's the lowest-cost option
+        all_anchors: Set of all anchor vertices to avoid direct anchor-to-anchor connections
     
     Returns:
         Next vertex to visit, or None if no valid vertex exists
@@ -175,6 +195,10 @@ def _find_next_vertex(graph, current, visited, target, early_exit):
     for v in range(n):
         # Skip visited vertices
         if v in visited:
+            continue
+            
+        # Skip other anchors (except target) to prevent direct anchor-to-anchor connections
+        if all_anchors and v in all_anchors and v != target:
             continue
         
         weight = graph[current][v]

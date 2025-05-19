@@ -3,6 +3,7 @@ import itertools
 import json
 import csv
 import functools
+from hamiltonian import hamiltonian_cycle_heuristic
 
 # Function to create a complete graph with weighted edges.
 # Parameters:
@@ -343,7 +344,7 @@ def random_anchor_heuristic(graph, vertex):
     return cycle_2, lowest_weight_2
 
 
-def run_benchmark(graph, vertex):
+def run_base_benchmark(graph, vertex):
     results = {}
     results["optimal_brute_force"] = find_optimal_cycle(graph, vertex)
     results["optimal_held_karp"] = find_optimal_cycle_held_karp(graph, vertex)
