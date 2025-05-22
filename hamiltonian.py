@@ -64,9 +64,11 @@ def hamiltonian_cycle_heuristic(graph, start, anchors=None, max_depth=-1, early_
     
     for perm in itertools.permutations(other_anchors):
         anchor_path = [start] + list(perm) + [start]
+        print(f"Anchor path: {anchor_path}")
         
         # 3. Perform anchor-bridging traversal for this permutation
         cycle, weight = _build_cycle_from_anchors(graph, anchor_path, n, max_depth, early_exit)
+        print(f"Current weight: {weight}")
         
         # Track best solution
         if weight < best_weight:
