@@ -1,6 +1,7 @@
 from collections import defaultdict
 from utils import generate_complete_graph, print_graph, run_base_benchmark, greedy_algorithm, find_optimal_cycle_held_karp, low_anchor_heuristic
 from hamiltonian import hamiltonian_cycle_heuristic
+from hamiltonian_improved import hamiltonian_cycle_heuristic_improved
 
 def base_heuristic_test(num_graphs=3, num_vertices=9, weight_range=(1, 100), seed_base=100):
     all_weights = defaultdict(list)
@@ -41,9 +42,9 @@ def multi_anchor_heuristic_test(num_graphs=3, num_vertices=15, weight_range=(1, 
         print_graph(graph)
 
         for v in range(num_vertices):
-            # anchors = [v, (v + 5) % num_vertices, (v + 10) % num_vertices]  
+            anchors = [v, (v + 5) % num_vertices, (v + 10) % num_vertices, (v + 15) % num_vertices]  
             # example: 3 anchors spread apart
-            anchors = [v]
+            # anchors = [v]
             results = {}
 
             # Run optimal
@@ -58,7 +59,14 @@ def multi_anchor_heuristic_test(num_graphs=3, num_vertices=15, weight_range=(1, 
                 start=v,
                 anchors=anchors,
                 max_depth=-1,
-                early_exit=True
+                early_exit=False
+            )
+            results["hamiltonian_improved"] = hamiltonian_cycle_heuristic_improved(
+                graph,
+                start=v,
+                anchors=anchors,
+                max_depth=-1,
+                early_exit=False
             )
             results["single_anchor"] = low_anchor_heuristic(graph, v)
 
@@ -73,7 +81,7 @@ def multi_anchor_heuristic_test(num_graphs=3, num_vertices=15, weight_range=(1, 
 
 def main():
     # base_heuristic_test()
-    multi_anchor_heuristic_test(num_graphs=1, num_vertices=15, weight_range=(1, 100), seed_base=42069)
+    multi_anchor_heuristic_test(num_graphs=1, num_vertices=16, weight_range=(1, 100), seed_base=42069)
 
 # 1 graph, 1 anchor, 2 permutations
 # 1 graph, 2 anchors, 4 permutations
