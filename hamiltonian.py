@@ -54,36 +54,104 @@ def hamiltonian_cycle_heuristic(graph, start, anchors=None, max_depth=-1, early_
         if max_intermediate_vertices < n - k:
             raise ValueError(f"max_depth={max_depth} is too small to accommodate all {n-k} non-anchor vertices")
     
-    # 2. Anchor permutation logic with start and end fixed
-    # Remove start from anchors to avoid duplicates in permutations
+    # 2. Find the two lowest-weight edges for each anchor
+    anchor_edges = _find_anchor_edges(graph, anchors)
+
+    # print(f"Anchor edges: {anchor_edges}")
+    
+    # 3. Generate all anchor permutations and edge configurations
     other_anchors = [a for a in anchors if a != start]
     
-    # Generate all permutations of other anchors and add start at beginning and end
     best_cycle = None
     best_weight = float('inf')
     
+    # Try all permutations of anchor order (start fixed at beginning and end)
     for perm in itertools.permutations(other_anchors):
         anchor_path = [start] + list(perm) + [start]
-        print(f"Anchor path: {anchor_path}")
         
-        # 3. Perform anchor-bridging traversal for this permutation
-        cycle, weight = _build_cycle_from_anchors(graph, anchor_path, n, max_depth, early_exit)
-        print(f"Current weight: {weight}")
-        
-        # Track best solution
-        if weight < best_weight:
-            best_weight = weight
-            best_cycle = cycle
+        # print(f"Anchor path: f{anchor_path}")
+
+        # Try all 2^k edge direction configurations for this permutation
+        num_anchors = len(anchors)
+        for config in range(2 ** num_anchors):
+            # Convert configuration number to binary representation
+            edge_config = _get_edge_configuration(config, num_anchors)
+            # print(f"Current edge config: {edge_config}")
+            
+            # Build cycle with this anchor order and edge configuration
+            cycle, weight = _build_cycle_with_edge_config(
+                graph, anchor_path, anchor_edges, edge_config, n, max_depth, early_exit
+            )
+            
+            #print(f"Current Cycle: {cycle}")
+            # print(f"Current Weight: {weight}")
+
+            # Track best solution
+            if weight < best_weight:
+                best_weight = weight
+                best_cycle = cycle
     
     return best_cycle, best_weight
 
-def _build_cycle_from_anchors(graph, anchor_path, n, max_depth, early_exit):
+def _find_anchor_edges(graph, anchors):
     """
-    Builds a Hamiltonian cycle by connecting anchors using greedy bridging with constraints.
+    Finds the two lowest-weight edges for each anchor vertex.
+    
+    Args:
+        graph: Adjacency matrix
+        anchors: List of anchor vertices
+    
+    Returns:
+        Dictionary mapping each anchor to its two lowest-weight edges
+    """
+    anchor_edges = {}
+    all_anchors_set = set(anchors)
+    
+    for anchor in anchors:
+        # Find all edges from this anchor to non-anchor vertices
+        edges = []
+        for v in range(len(graph)):
+            if v != anchor and v not in all_anchors_set:
+                edges.append((graph[anchor][v], v))
+        
+        # Sort by weight and take the two lowest-weight edges
+        edges.sort()
+        if len(edges) >= 2:
+            anchor_edges[anchor] = [edges[0][1], edges[1][1]]  # Store vertex indices only
+        elif len(edges) == 1:
+            anchor_edges[anchor] = [edges[0][1], edges[0][1]]  # Duplicate if only one available
+        else:
+            # If no non-anchor vertices available, this is an edge case
+            anchor_edges[anchor] = [None, None]
+    
+    return anchor_edges
+
+def _get_edge_configuration(config_num, num_anchors):
+    """
+    Converts a configuration number to a binary representation for edge directions.
+    
+    Args:
+        config_num: Integer representing the configuration (0 to 2^num_anchors - 1)
+        num_anchors: Number of anchors
+    
+    Returns:
+        List of booleans indicating edge direction for each anchor
+        (False = use first edge as entry, True = use second edge as entry)
+    """
+    config = []
+    for i in range(num_anchors):
+        config.append((config_num >> i) & 1 == 1)
+    return config
+
+def _build_cycle_with_edge_config(graph, anchor_path, anchor_edges, edge_config, n, max_depth, early_exit):
+    """
+    Builds a Hamiltonian cycle using specific anchor order and edge configuration.
     
     Args:
         graph: Adjacency matrix
         anchor_path: Ordered list of anchors to visit
+        anchor_edges: Dictionary of anchor edges
+        edge_config: List of booleans for edge direction configuration
         n: Number of vertices in the graph
         max_depth: Maximum bridge depth (-1 for adaptive)
         early_exit: Flag for early connection to target anchor
@@ -91,7 +159,11 @@ def _build_cycle_from_anchors(graph, anchor_path, n, max_depth, early_exit):
     Returns:
         Tuple of (cycle, total_weight)
     """
-    visited = set(anchor_path[:-1])  # Mark all anchors except the last one as visited
+    # Create mapping from anchor to its index in the original anchors list
+    unique_anchors = list(set(anchor_path))
+    anchor_to_index = {anchor: i for i, anchor in enumerate(unique_anchors)}
+    
+    visited = set(unique_anchors)  # Mark all anchors as visited initially
     cycle = [anchor_path[0]]  # Start with the first anchor
     total_weight = 0
     
@@ -103,65 +175,99 @@ def _build_cycle_from_anchors(graph, anchor_path, n, max_depth, early_exit):
     num_bridges = len(anchor_path) - 1
     
     # Calculate vertices per bridge (trying to distribute evenly)
-    base_vertices_per_bridge = total_non_anchors // num_bridges
-    extra = total_non_anchors % num_bridges
+    base_vertices_per_bridge = total_non_anchors // num_bridges if num_bridges > 0 else 0
+    extra = total_non_anchors % num_bridges if num_bridges > 0 else 0
     
     # For each pair of consecutive anchors
     for i in range(len(anchor_path) - 1):
         from_anchor = anchor_path[i]
-        to_anchor = anchor_path[i+1]
+        to_anchor = anchor_path[i + 1]
+        
+        # Get the entry and exit vertices for the anchors based on configuration
+        from_anchor_idx = anchor_to_index.get(from_anchor, 0)
+        to_anchor_idx = anchor_to_index.get(to_anchor, 0)
+        
+        # Determine exit vertex for from_anchor
+        if from_anchor in anchor_edges and anchor_edges[from_anchor][0] is not None:
+            from_exit_idx = 1 if edge_config[from_anchor_idx] else 0
+            from_exit = anchor_edges[from_anchor][from_exit_idx]
+        else:
+            from_exit = None
+        
+        # Determine entry vertex for to_anchor
+        if to_anchor in anchor_edges and anchor_edges[to_anchor][0] is not None:
+            to_entry_idx = 0 if edge_config[to_anchor_idx] else 1
+            to_entry = anchor_edges[to_anchor][to_entry_idx]
+        else:
+            to_entry = None
         
         # Determine adaptive depth for this bridge if requested
         if max_depth == -1:
-            # More vertices for bridges between distant anchors
-            anchor_distance = graph[from_anchor][to_anchor]
-            # Simple adaptive strategy - allocate more vertices to longer distances
-            # Allocate base vertices plus extra if available
             current_bridge_vertices = base_vertices_per_bridge + (1 if i < extra else 0)
         else:
             current_bridge_vertices = max_depth
         
-        # Connect the anchors with a greedy path
+        # Build the bridge from from_anchor to to_anchor using specified entry/exit points
         current = from_anchor
         depth = 0
         
+        # First, try to connect to the exit vertex of from_anchor if specified
+        if from_exit is not None and from_exit not in visited:
+            total_weight += graph[current][from_exit]
+            cycle.append(from_exit)
+            visited.add(from_exit)
+            current = from_exit
+            depth += 1
+        
+        # Build bridge to to_anchor, preferring to connect via to_entry if possible
         while current != to_anchor and depth < current_bridge_vertices:
+            # If we can connect to the entry vertex of to_anchor, prioritize that
+            if to_entry is not None and to_entry not in visited and depth == current_bridge_vertices - 1:
+                total_weight += graph[current][to_entry]
+                cycle.append(to_entry)
+                visited.add(to_entry)
+                current = to_entry
+                depth += 1
+                break
+            
+            # Otherwise, use greedy selection
             next_vertex = _find_next_vertex(graph, current, visited, to_anchor, early_exit, all_anchors)
             
-            # If we found a valid next vertex
             if next_vertex is not None:
-                # Add the edge
                 total_weight += graph[current][next_vertex]
                 cycle.append(next_vertex)
                 
-                # If we've reached the target anchor, we're done with this bridge
                 if next_vertex == to_anchor:
                     break
                 
-                # Mark as visited and continue
                 visited.add(next_vertex)
                 current = next_vertex
                 depth += 1
             else:
-                # Force connection to target anchor if no other valid vertices
+                # Force connection to target anchor
                 total_weight += graph[current][to_anchor]
                 cycle.append(to_anchor)
                 break
         
-        # Force connection to target anchor if we've reached depth limit
+        # Connect to to_entry if we haven't reached to_anchor yet
         if current != to_anchor:
-            total_weight += graph[current][to_anchor]
-            cycle.append(to_anchor)
+            if to_entry is not None and to_entry not in visited:
+                total_weight += graph[current][to_entry]
+                cycle.append(to_entry)
+                visited.add(to_entry)
+                current = to_entry
+            
+            # Finally connect to to_anchor
+            if current != to_anchor:
+                total_weight += graph[current][to_anchor]
+                cycle.append(to_anchor)
     
-    # 4. Visit remaining unvisited vertices
-    # At this point, we've visited all anchors in the specified order
-    # Now we need to visit any remaining unvisited vertices before returning to start
+    # Visit remaining unvisited vertices
     current = cycle[-1]
     all_vertices = set(range(n))
-    remaining = all_vertices - visited - {anchor_path[-1]}
+    remaining = all_vertices - visited
     
     while remaining:
-        # Find the closest unvisited vertex
         next_vertex = min(remaining, key=lambda v: graph[current][v])
         total_weight += graph[current][next_vertex]
         cycle.append(next_vertex)
@@ -174,6 +280,7 @@ def _build_cycle_from_anchors(graph, anchor_path, n, max_depth, early_exit):
         cycle.append(anchor_path[0])
     
     return cycle, total_weight
+
 
 def _find_next_vertex(graph, current, visited, target, early_exit, all_anchors=None):
     """
