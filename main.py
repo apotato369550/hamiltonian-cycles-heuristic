@@ -2,6 +2,7 @@ from collections import defaultdict
 from utils import generate_complete_graph, print_graph, run_base_benchmark, greedy_algorithm, find_optimal_cycle_held_karp, low_anchor_heuristic
 from hamiltonian import hamiltonian_cycle_heuristic
 from hamiltonian_improved import hamiltonian_cycle_heuristic_improved
+from bidirectional_greedy import bidirectional_nearest_neighbor_tsp, bidirectional_tsp_comprehensive
 
 def base_heuristic_test(num_graphs=3, num_vertices=9, weight_range=(1, 100), seed_base=100):
     all_weights = defaultdict(list)
@@ -48,7 +49,7 @@ def multi_anchor_heuristic_test(num_graphs=3, num_vertices=15, weight_range=(1, 
             results = {}
 
             # Run optimal
-            results["optimal_held_karp"] = find_optimal_cycle_held_karp(graph, v)
+            # results["optimal_held_karp"] = find_optimal_cycle_held_karp(graph, v)
             
             # Run greedy
             results["greedy"] = greedy_algorithm(graph, v)
@@ -69,6 +70,8 @@ def multi_anchor_heuristic_test(num_graphs=3, num_vertices=15, weight_range=(1, 
                 early_exit=False
             )
             results["single_anchor"] = low_anchor_heuristic(graph, v)
+            results["bidirectional_greedy"] = bidirectional_nearest_neighbor_tsp(graph, v)
+            results["bidirectional_greedy_comprehensive"] = bidirectional_tsp_comprehensive(graph, v)
 
             for method, (_, weight) in results.items():
                 all_weights[method].append(weight)
@@ -81,7 +84,8 @@ def multi_anchor_heuristic_test(num_graphs=3, num_vertices=15, weight_range=(1, 
 
 def main():
     # base_heuristic_test()
-    multi_anchor_heuristic_test(num_graphs=1, num_vertices=16, weight_range=(1, 100), seed_base=42069)
+    multi_anchor_heuristic_test(num_graphs=3, num_vertices=20, weight_range=(1, 100), seed_base=42069)
+
 
 # 1 graph, 1 anchor, 2 permutations
 # 1 graph, 2 anchors, 4 permutations

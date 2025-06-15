@@ -270,6 +270,10 @@ def find_optimal_cycle_held_karp(graph, start_vertex):
     
     # The path is in reverse order, so reverse it
     optimal_path.reverse()
+
+    print("Held-Karp Results: ")
+    print(f"Cycle: {optimal_path} Weight: {min_cost_back}")
+    print(f"Length of cycle: {len(optimal_path)}")
     
     return optimal_path, min_cost_back
 

@@ -319,4 +319,11 @@ def hamiltonian_cycle_heuristic_improved(graph, start, anchors=None, max_depth=-
         - total_weight: The sum of weights in the cycle
     """
     solver = ImprovedHamiltonianSolver(graph)
-    return solver.solve(start=start)
+    # disable local search
+    cycle, weight = solver.solve(start=start, local_search=False)
+    '''
+    print("Improved Hamiltonian Results: ")
+    print(f"Cycle: {cycle} Weight: {weight}")
+    print(f"Length of cycle: {len(cycle)}")
+    '''
+    return (cycle, weight)
