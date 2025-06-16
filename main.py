@@ -2,7 +2,8 @@ from collections import defaultdict
 from utils import generate_complete_graph, print_graph, run_base_benchmark, greedy_algorithm, find_optimal_cycle_held_karp, low_anchor_heuristic
 from hamiltonian import hamiltonian_cycle_heuristic
 from hamiltonian_improved import hamiltonian_cycle_heuristic_improved
-from bidirectional_greedy import bidirectional_nearest_neighbor_tsp, bidirectional_tsp_comprehensive
+from bidirectional_greedy import bidirectional_nearest_neighbor_tsp
+from kruskals_greedy import greedy_edge_tsp, greedy_edge_tsp_v2, greedy_edge_tsp_v3
 
 def base_heuristic_test(num_graphs=3, num_vertices=9, weight_range=(1, 100), seed_base=100):
     all_weights = defaultdict(list)
@@ -52,7 +53,7 @@ def multi_anchor_heuristic_test(num_graphs=3, num_vertices=15, weight_range=(1, 
             # results["optimal_held_karp"] = find_optimal_cycle_held_karp(graph, v)
             
             # Run greedy
-            results["greedy"] = greedy_algorithm(graph, v)
+            results["nearest-neighbor"] = greedy_algorithm(graph, v)
 
             # Run your multi-anchor heuristic
             results["multi_anchor"] = hamiltonian_cycle_heuristic(
@@ -71,7 +72,9 @@ def multi_anchor_heuristic_test(num_graphs=3, num_vertices=15, weight_range=(1, 
             )
             results["single_anchor"] = low_anchor_heuristic(graph, v)
             results["bidirectional_greedy"] = bidirectional_nearest_neighbor_tsp(graph, v)
-            results["bidirectional_greedy_comprehensive"] = bidirectional_tsp_comprehensive(graph, v)
+            results["greedy_v1"] = greedy_edge_tsp(graph, v)
+            results["greedy_v2"] = greedy_edge_tsp_v2(graph, v)
+            results["greedy_v3"] = greedy_edge_tsp_v3(graph)
 
             for method, (_, weight) in results.items():
                 all_weights[method].append(weight)
