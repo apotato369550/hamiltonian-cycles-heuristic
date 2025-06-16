@@ -1,5 +1,6 @@
 from collections import defaultdict
-from utils import generate_complete_graph, print_graph, run_base_benchmark, greedy_algorithm, find_optimal_cycle_held_karp, low_anchor_heuristic
+from utils import generate_complete_graph, print_graph, run_base_benchmark, greedy_algorithm, find_optimal_cycle_held_karp
+from low_anchor_heuristic import low_anchor_heuristic
 from hamiltonian import hamiltonian_cycle_heuristic
 from hamiltonian_improved import hamiltonian_cycle_heuristic_improved
 from bidirectional_greedy import bidirectional_nearest_neighbor_tsp
