@@ -5,6 +5,7 @@ from hamiltonian import hamiltonian_cycle_heuristic
 from hamiltonian_improved import hamiltonian_cycle_heuristic_improved
 from bidirectional_greedy import bidirectional_nearest_neighbor_tsp
 from kruskals_greedy import greedy_edge_tsp, greedy_edge_tsp_v2, greedy_edge_tsp_v3
+from anchor_heuristic_family import adaptive_anchor_heuristic, multi_anchor_heuristic, smart_anchor_heuristic, hybrid_anchor_heuristic, insertion_anchor_heuristic, probabilistic_anchor_heuristic
 
 def base_heuristic_test(num_graphs=3, num_vertices=9, weight_range=(1, 100), seed_base=100):
     all_weights = defaultdict(list)
@@ -76,6 +77,15 @@ def multi_anchor_heuristic_test(num_graphs=3, num_vertices=15, weight_range=(1, 
             results["greedy_v1"] = greedy_edge_tsp(graph, v)
             results["greedy_v2"] = greedy_edge_tsp_v2(graph, v)
             results["greedy_v3"] = greedy_edge_tsp_v3(graph)
+            results["adaptive_anchor"] = adaptive_anchor_heuristic(graph, v)
+            results["multi_anchor_v2"] = multi_anchor_heuristic(graph, v)
+            results["smart_anchor"] = smart_anchor_heuristic(graph, v)
+            results["hybrid_anchor"] = hybrid_anchor_heuristic(graph, v)
+            results["insertion_anchor"] = insertion_anchor_heuristic(graph, v)
+            results["probablistic_anchor"] = probabilistic_anchor_heuristic(graph, v)
+
+
+
 
             for method, (_, weight) in results.items():
                 all_weights[method].append(weight)
@@ -88,7 +98,7 @@ def multi_anchor_heuristic_test(num_graphs=3, num_vertices=15, weight_range=(1, 
 
 def main():
     # base_heuristic_test()
-    multi_anchor_heuristic_test(num_graphs=3, num_vertices=20, weight_range=(1, 100), seed_base=42069)
+    multi_anchor_heuristic_test(num_graphs=5, num_vertices=20, weight_range=(1, 100), seed_base=42069)
 
 
 # 1 graph, 1 anchor, 2 permutations
