@@ -322,3 +322,195 @@ def _find_next_vertex(graph, current, visited, target, early_exit, all_anchors=N
             next_vertex = v
     
     return next_vertex
+def best_multi_anchor_heuristic(graph, num_anchors, max_depth=-1, early_exit=False):
+    """
+    Tries all possible anchor combinations of a given size and returns the best Hamiltonian cycle.
+    
+    Args:
+        graph: A complete, weighted graph represented as an adjacency matrix
+        num_anchors: Number of anchors to use (must be >= 2)
+        max_depth: Maximum bridge depth (-1 for adaptive)
+        early_exit: Flag for early connection to target anchor
+        
+    Returns:
+        Tuple of (best_cycle, best_weight) where:
+        - best_cycle: List of vertices representing the best Hamiltonian cycle found
+        - best_weight: Total weight of the best cycle
+    """
+    import itertools
+    
+    n = len(graph)
+    
+    # Validation
+    if num_anchors < 2:
+        raise ValueError("Number of anchors must be at least 2")
+    
+    if num_anchors > n:
+        raise ValueError(f"Number of anchors ({num_anchors}) cannot exceed number of vertices ({n})")
+    
+    # Check if we have enough vertices for the anchor structure
+    if n < 4 * num_anchors:
+        print(f"Warning: Graph has {n} vertices but ideally needs {4 * num_anchors} for {num_anchors} anchors")
+    
+    best_cycle = None
+    best_weight = float('inf')
+    best_anchors = None
+    total_combinations = 0
+    
+    # Generate all possible anchor combinations
+    for anchor_combination in itertools.combinations(range(n), num_anchors):
+        total_combinations += 1
+        anchors = list(anchor_combination)
+        
+        # Try each anchor in this combination as the starting vertex
+        for start_vertex in anchors:
+            try:
+                cycle, weight = hamiltonian_cycle_heuristic(
+                    graph, 
+                    start_vertex, 
+                    anchors=anchors, 
+                    max_depth=max_depth, 
+                    early_exit=early_exit
+                )
+                
+                if weight < best_weight:
+                    best_weight = weight
+                    best_cycle = cycle
+                    best_anchors = anchors
+                    
+            except (ValueError, IndexError) as e:
+                # Skip combinations that cause errors
+                continue
+    
+    if best_cycle is None:
+        raise ValueError("No valid Hamiltonian cycle could be constructed from any anchor combination")
+    
+    # print(f"Evaluated {total_combinations} anchor combinations")
+    # print(f"Best anchors found: {best_anchors}")
+    return best_cycle, best_weight
+
+
+def smart_multi_anchor_heuristic(graph, num_anchors, max_depth=-1, early_exit=False, selection_strategy="diverse"):
+    """
+    A smarter version that uses heuristics to select promising anchor combinations
+    instead of trying all possible combinations.
+    
+    Args:
+        graph: A complete, weighted graph represented as an adjacency matrix
+        num_anchors: Number of anchors to use
+        max_depth: Maximum bridge depth (-1 for adaptive)
+        early_exit: Flag for early connection to target anchor
+        selection_strategy: Strategy for selecting anchor combinations
+                          - "diverse": Select anchors that are far apart
+                          - "central": Select vertices with low average distances
+                          - "mixed": Combine diverse and central strategies
+        
+    Returns:
+        Tuple of (best_cycle, best_weight, best_anchors)
+    """
+    n = len(graph)
+    
+    if num_anchors < 2:
+        raise ValueError("Number of anchors must be at least 2")
+    
+    if num_anchors > n:
+        raise ValueError(f"Number of anchors ({num_anchors}) cannot exceed number of vertices ({n})")
+    
+    # Generate promising anchor combinations based on strategy
+    if selection_strategy == "diverse":
+        anchor_combinations = _generate_diverse_anchors(graph, num_anchors)
+    elif selection_strategy == "central":
+        anchor_combinations = _generate_central_anchors(graph, num_anchors)
+    elif selection_strategy == "mixed":
+        diverse_combos = _generate_diverse_anchors(graph, num_anchors, limit=10)
+        central_combos = _generate_central_anchors(graph, num_anchors, limit=10)
+        anchor_combinations = diverse_combos + central_combos
+    else:
+        raise ValueError(f"Unknown selection strategy: {selection_strategy}")
+    
+    best_cycle = None
+    best_weight = float('inf')
+    best_anchors = None
+    
+    # print(f"Trying {len(anchor_combinations)} promising anchor combinations")
+    
+    for anchors in anchor_combinations:
+        # Try each anchor as starting vertex
+        for start_vertex in anchors:
+            try:
+                cycle, weight = hamiltonian_cycle_heuristic(
+                    graph, 
+                    start_vertex, 
+                    anchors=anchors, 
+                    max_depth=max_depth, 
+                    early_exit=early_exit
+                )
+                
+                if weight < best_weight:
+                    best_weight = weight
+                    best_cycle = cycle
+                    best_anchors = anchors
+                    
+            except (ValueError, IndexError) as e:
+                continue
+    
+    if best_cycle is None:
+        raise ValueError("No valid Hamiltonian cycle could be constructed")
+    
+    # print(f"Best anchors found: {best_anchors}")
+    return best_cycle, best_weight
+
+
+def _generate_diverse_anchors(graph, num_anchors, limit=20):
+    """
+    Generate anchor combinations where anchors are maximally distant from each other.
+    """
+    import itertools
+    n = len(graph)
+    
+    # Calculate all pairwise distances and rank combinations by total distance
+    combinations_with_scores = []
+    
+    for combo in itertools.combinations(range(n), num_anchors):
+        total_distance = 0
+        for i in range(len(combo)):
+            for j in range(i + 1, len(combo)):
+                total_distance += graph[combo[i]][combo[j]]
+        combinations_with_scores.append((combo, total_distance))
+    
+    # Sort by total distance (descending - we want diverse anchors)
+    combinations_with_scores.sort(key=lambda x: x[1], reverse=True)
+    
+    # Return top combinations (convert back to lists)
+    return [list(combo[0]) for combo in combinations_with_scores[:limit]]
+
+
+def _generate_central_anchors(graph, num_anchors, limit=20):
+    """
+    Generate anchor combinations using vertices with low average distances to all other vertices.
+    """
+    import itertools
+    n = len(graph)
+    
+    # Calculate centrality score for each vertex (lower is better)
+    centrality_scores = []
+    for v in range(n):
+        avg_distance = sum(graph[v]) / (n - 1)
+        centrality_scores.append((v, avg_distance))
+    
+    # Sort by centrality score
+    centrality_scores.sort(key=lambda x: x[1])
+    
+    # Take the most central vertices as candidates
+    central_candidates = [v[0] for v in centrality_scores[:min(num_anchors * 3, n)]]
+    
+    # Generate combinations from these candidates
+    combinations_with_scores = []
+    for combo in itertools.combinations(central_candidates, num_anchors):
+        total_centrality = sum(centrality_scores[v][1] for v in combo)
+        combinations_with_scores.append((combo, total_centrality))
+    
+    # Sort by total centrality (ascending - we want central vertices)
+    combinations_with_scores.sort(key=lambda x: x[1])
+    
+    return [list(combo[0]) for combo in combinations_with_scores[:limit]]
