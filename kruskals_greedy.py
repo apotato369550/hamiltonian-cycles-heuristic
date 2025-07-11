@@ -1,3 +1,5 @@
+from graph_generator import calculate_cycle_cost
+
 def greedy_edge_tsp_v3(graph):
     """
     Pure greedy edge-based TSP solver that ignores starting vertex.
@@ -104,4 +106,4 @@ def greedy_edge_tsp_v3(graph):
     # Complete the cycle by returning to start
     path.append(start)
     
-    return path, total_weight
+    return path, calculate_cycle_cost(path, graph)

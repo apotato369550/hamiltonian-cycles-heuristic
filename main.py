@@ -9,6 +9,9 @@ from kruskals_greedy_family import greedy_edge_tsp, greedy_edge_tsp_v2, greedy_e
 from anchor_heuristic_family import adaptive_anchor_heuristic, multi_anchor_heuristic, smart_anchor_heuristic, hybrid_anchor_heuristic, insertion_anchor_heuristic, probabilistic_anchor_heuristic
 from pressure_field_heuristic import pressure_field_heuristic
 from christofides_algorithm import christofides_algorithm
+from prims_tsp import prims_tsp, best_prims_tsp, prims_anchoring_tsp, best_prims_anchoring_tsp
+from github_heuristic import heuristic_path
+from nearest_neighbor import nearest_neighbor_tsp, best_nearest_neighbor
 
 from low_anchor_metaheuristic import rank_vertices_by_weight
 
@@ -64,16 +67,22 @@ def improved_base_heuristic_test(num_graphs=3, num_vertices=15, weight_range=(1,
 
 
             # Run your multi-anchor heuristic
-            results["nearest_neighbor"] = greedy_algorithm(graph, v)
+            results["nearest_neighbor"] = nearest_neighbor_tsp(graph, v)
+            results["best_nearest_neighbor"] = best_nearest_neighbor(graph)
             results["single_anchor"] = low_anchor_heuristic(graph, v)
             results["best_anchor"] = best_anchor_heuristic(graph)
+            results["github_heuristic"] = heuristic_path(graph, v)
+            results["prims_tsp"] = prims_tsp(graph, v)
+            results["best_prims_tsp"] = best_prims_tsp(graph)
+            results["prims_anchor_tsp"] = prims_anchoring_tsp(graph, v)
+            results["best_prims_anchor_tsp"] = best_prims_anchoring_tsp(graph)
             # renamed to kruskal's TSP (from greedy_v3)
             results["kruskals_tsp"] = greedy_edge_tsp_v3(graph)
+            '''
             results["high_anchor_heuristic"] = low_anchor_heuristic(graph, highest_v)
             results["best_2_anchor"] = best_multi_anchor_heuristic(graph, 2)
             results["best_2_anchor_early_exit"] = best_multi_anchor_heuristic(graph, 2, early_exit=True)
             results["best_3_anchor"] = best_multi_anchor_heuristic(graph, 3)
-            '''
             results["multi_anchor"] = hamiltonian_cycle_heuristic(
                 graph,
                 start=v,
@@ -155,7 +164,7 @@ def metric_algorithms_test(num_graphs=3, num_vertices=15, weight_range=(1, 100),
 
 def main():
     # base_heuristic_test()
-    improved_base_heuristic_test(num_graphs=5, num_vertices=15, weight_range=(1, 400), seed_base=696969)
+    improved_base_heuristic_test(num_graphs=5, num_vertices=50, weight_range=(1, 400), seed_base=696969)
     # metric_algorithms_test(num_graphs=5, num_vertices=30, weight_range=(1, 400), seed_base=696969)
 
 

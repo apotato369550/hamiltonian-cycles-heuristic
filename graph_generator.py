@@ -335,6 +335,28 @@ def test_improved_generator():
             print(f"    {row}")
         print()
 
+def calculate_cycle_cost(cycle, adjacency_matrix):
+    """
+    Calculates the total cost of a TSP cycle given the cycle path and adjacency matrix.
+    
+    Args:
+        cycle: List of vertex indices representing the path (e.g., [0, 2, 1, 3, 0])
+        adjacency_matrix: 2D list/array where adjacency_matrix[i][j] is the cost from vertex i to vertex j
+        
+    Returns:
+        float: Total cost of the cycle
+    """
+    if len(cycle) < 2:
+        return 0
+    
+    total_cost = 0
+    for i in range(len(cycle) - 1):
+        from_vertex = cycle[i]
+        to_vertex = cycle[i + 1]
+        total_cost += adjacency_matrix[from_vertex][to_vertex]
+    
+    return total_cost
+
 
 if __name__ == "__main__":
     test_improved_generator()

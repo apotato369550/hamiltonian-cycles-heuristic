@@ -1,3 +1,4 @@
+from graph_generator import calculate_cycle_cost
 
 def construct_greedy_cycle(graph, start, anchor1, anchor2):
     """Constructs a greedy cycle given a start vertex and 2 anchor points. Ensures Hamiltonian cycle."""
@@ -53,7 +54,7 @@ def construct_greedy_cycle(graph, start, anchor1, anchor2):
     total_weight += graph[current_vertex][start]
     path.append(start)
     
-    return path, total_weight
+    return path, calculate_cycle_cost(path, graph)
 
 def low_anchor_heuristic(graph, vertex):
     def find_two_lowest_indices(values, vertex):
