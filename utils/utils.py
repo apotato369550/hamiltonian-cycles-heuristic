@@ -3,7 +3,7 @@ import itertools
 import json
 import csv
 import functools
-from hamiltonian import hamiltonian_cycle_heuristic
+from anchoring.hamiltonian_anchor import HamiltonianAnchor
 
 
 # Utility function to print the adjacency matrix of a graph.

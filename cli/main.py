@@ -1,19 +1,33 @@
+#!/usr/bin/env python3
+"""
+Legacy CLI interface for TSP Heuristic Algorithms
+
+This file provides backward compatibility and simple test functions.
+For the full-featured CLI, use cli/cli.py instead.
+"""
+
+import sys
+import os
 from collections import defaultdict
-from graph_generator import generate_complete_graph
+
+# Add parent directory to path to import modules
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+from utils.graph_generator import generate_complete_graph
 from utils import print_graph, run_base_benchmark, greedy_algorithm, find_optimal_cycle_held_karp
-from low_anchor_heuristic import low_anchor_heuristic, best_anchor_heuristic
-from hamiltonian import hamiltonian_cycle_heuristic, best_multi_anchor_heuristic
-from hamiltonian_improved import hamiltonian_cycle_heuristic_improved
-from bidirectional_greedy import bidirectional_nearest_neighbor_tsp
+from anchoring.low_anchor_heuristic import LowAnchorHeuristic
+from anchoring.hamiltonian_anchor import HamiltonianAnchor
+from anchoring.hamiltonian_improved import HamiltonianImproved
+from anchoring.bidirectional_greedy import BidirectionalGreedy
 from kruskals_greedy_family import greedy_edge_tsp, greedy_edge_tsp_v2, greedy_edge_tsp_v3
-from anchor_heuristic_family import adaptive_anchor_heuristic, multi_anchor_heuristic, smart_anchor_heuristic, hybrid_anchor_heuristic, insertion_anchor_heuristic, probabilistic_anchor_heuristic
+from anchoring.anchor_heuristic_family import AnchorHeuristicFamily
 from pressure_field_heuristic import pressure_field_heuristic
 from christofides_algorithm import christofides_algorithm
 from prims_tsp import prims_tsp, best_prims_tsp, prims_anchoring_tsp, best_prims_anchoring_tsp
 from github_heuristic import heuristic_path
 from nearest_neighbor import nearest_neighbor_tsp, best_nearest_neighbor
 
-from low_anchor_metaheuristic import rank_vertices_by_weight
+from anchoring.low_anchor_metaheuristic import LowAnchorMetaheuristic
 
 def base_heuristic_test(num_graphs=3, num_vertices=9, weight_range=(1, 100), seed_base=100):
     all_weights = defaultdict(list)
@@ -163,16 +177,80 @@ def metric_algorithms_test(num_graphs=3, num_vertices=15, weight_range=(1, 100),
         print(f"{method}: Average Weight = {avg:.2f} over {len(weights)} runs")
 
 def main():
-    # base_heuristic_test()
-    improved_base_heuristic_test(num_graphs=5, num_vertices=50, weight_range=(1, 400), seed_base=696969)
-    # metric_algorithms_test(num_graphs=5, num_vertices=30, weight_range=(1, 400), seed_base=696969)
+    """Legacy main function - use cli/cli.py for full functionality."""
+    print("🔄 TSP Heuristic Algorithms - Legacy Interface")
+    print("=" * 50)
+    print("For the full-featured CLI with advanced options, use:")
+    print("  python cli/cli.py --help")
+    print()
+    print("Available commands:")
+    print("  • Run single algorithm: python cli/cli.py run <algorithm>")
+    print("  • Compare algorithms:   python cli/cli.py compare <alg1> <alg2>")
+    print("  • Generate graphs:      python cli/cli.py generate")
+    print("  • Interactive visualization: python cli/cli.py visualize")
+    print()
 
+    # Run legacy tests
+    choice = input("Run legacy benchmark tests? (y/N): ").strip().lower()
+    if choice == 'y':
+        print("\n🏃 Running legacy benchmark tests...")
+        improved_base_heuristic_test(num_graphs=3, num_vertices=20, weight_range=(1, 100), seed_base=42)
+    else:
+        print("💡 Use the new CLI for better functionality!")
 
+def show_cli_usage():
+    """Display usage information for the new CLI."""
+    print("""
+🎯 TSP Heuristic Algorithms CLI Usage
+=====================================
 
-# 1 graph, 1 anchor, 2 permutations
-# 1 graph, 2 anchors, 4 permutations
-# 1 graph, 3 anchors, but only 2 permutations when there should be at least 
-# problem is: hamiltonian.py is not doing permutations properly
+The new CLI (cli/cli.py) provides comprehensive functionality:
+
+BASIC USAGE:
+  # Run a single algorithm
+  python cli/cli.py run christofides --vertices 10 --metric
+
+  # Compare multiple algorithms
+  python cli/cli.py compare nearest_neighbor christofides hamiltonian --vertices 15 --runs 3
+
+  # Generate and save graphs
+  python cli/cli.py generate --vertices 20 --output graph.json --metric
+
+  # Interactive visualization
+  python cli/cli.py visualize --vertices 6 --metric
+
+AVAILABLE ALGORITHMS:
+  Established: christofides, nearest_neighbor, prims, kruskals, kruskals_family
+  Experimental: hamiltonian, pressure_field
+
+OPTIONS:
+  --vertices N        Number of vertices (default: varies by command)
+  --min-weight N      Minimum edge weight (default: 1)
+  --max-weight N      Maximum edge weight (default: 100)
+  --metric            Generate metric graphs (satisfy triangle inequality)
+  --seed N            Random seed for reproducibility
+  --output FILE       Save results to file
+  --show-stats        Display detailed statistics
+  --runs N            Number of runs for comparison (default: 1)
+
+EXAMPLES:
+  # Quick test with default settings
+  python cli/cli.py run nearest_neighbor
+
+  # Advanced comparison with custom settings
+  python cli/cli.py compare christofides hamiltonian --vertices 25 --metric --runs 5 --output results.json
+
+  # Generate large graph for testing
+  python cli/cli.py generate --vertices 50 --metric --seed 123 --output large_graph.json
+
+For more help: python cli/cli.py --help
+    """)
+
+# Legacy functions remain for backward compatibility
+# (base_heuristic_test, improved_base_heuristic_test, metric_algorithms_test)
 
 if __name__ == "__main__":
-    main()
+    if len(sys.argv) > 1 and sys.argv[1] == "--show-cli":
+        show_cli_usage()
+    else:
+        main()

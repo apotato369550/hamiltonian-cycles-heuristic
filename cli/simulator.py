@@ -622,9 +622,9 @@ class TSPStepByStepVisualizer:
     
     def run_complete_simulation(self, use_euclidean=False, seed=42):
         """Run the complete simulation with step-by-step visualization."""
-        print("🔍 TSP Low Anchor Heuristic - Complete Step-by-Step Simulation")
+        print("[INFO] TSP Low Anchor Heuristic - Complete Step-by-Step Simulation")
         print("=" * 70)
-        
+
         # Generate graph
         if use_euclidean:
             self.generate_euclidean_graph(seed)
@@ -632,78 +632,78 @@ class TSPStepByStepVisualizer:
         else:
             self.generate_random_graph(seed)
             graph_type = "Random Weights"
-        
+
         self.create_networkx_graph()
-        
-        print(f"\n📊 Generated {graph_type} Graph ({self.num_vertices} vertices)")
+
+        print(f"\n[GRAPH] Generated {graph_type} Graph ({self.num_vertices} vertices)")
         print("\nAdjacency Matrix:")
         for i, row in enumerate(self.graph):
             print(f"  {i}: {row}")
-        
+
         # Phase 1: Find best starting vertex
-        print(f"\n🎯 Phase 1: Testing all {self.num_vertices} vertices to find best starting point")
+        print(f"\n[PHASE 1] Testing all {self.num_vertices} vertices to find best starting point")
         print("-" * 60)
-        
+
         all_results = []
         for vertex in range(self.num_vertices):
             try:
                 cycle, weight = low_anchor_heuristic(self.graph, vertex)
                 all_results.append((vertex, cycle, weight))
-                
+
                 # Show anchor selection for this vertex
                 row = self.graph[vertex]
                 sorted_indices = sorted((i for i in range(len(row)) if i != vertex), key=lambda i: row[i])
                 anchors = sorted_indices[:2]
                 anchor_weights = [row[anchors[0]], row[anchors[1]]]
-                
+
                 print(f"  Vertex {vertex}: Weight = {weight:3d} | Anchors: {anchors[0]}({anchor_weights[0]}) & {anchors[1]}({anchor_weights[1]})")
-                
+
             except Exception as e:
                 print(f"  Vertex {vertex}: Error - {e}")
-        
+
         if not all_results:
-            print("❌ No valid solutions found!")
+            print("[ERROR] No valid solutions found!")
             return
-        
+
         # Find best result
         best_vertex, best_cycle, best_weight = min(all_results, key=lambda x: x[2])
-        
-        print(f"\n🏆 Best starting vertex: {best_vertex} (Total weight: {best_weight})")
-        print(f"   Best cycle: {' → '.join(map(str, best_cycle))}")
-        
+
+        print(f"\n[BEST] Best starting vertex: {best_vertex} (Total weight: {best_weight})")
+        print(f"   Best cycle: {' -> '.join(map(str, best_cycle))}")
+
         # Phase 2: Detailed step-by-step visualization
-        print(f"\n🔍 Phase 2: Step-by-step visualization starting from vertex {best_vertex}")
+        print(f"\n[PHASE 2] Step-by-step visualization starting from vertex {best_vertex}")
         print("-" * 60)
-        
+
         input("\nPress Enter to start step-by-step visualization...")
-        
+
         # Get detailed steps for the best starting vertex
         result = low_anchor_heuristic_verbose(self.graph, best_vertex)
-        
-        print(f"\n📌 Anchor Selection for vertex {best_vertex}:")
+
+        print(f"\n[ANCHORS] Anchor Selection for vertex {best_vertex}:")
         print(f"   Anchors found: {result['anchors']} with weights {result['anchor_weights']}")
         print(f"   Strategy: {result['comparison']}")
         print(f"   Using anchor order: {result['anchor_order_used']}")
-        
+
         # Visualize each step
         steps = result['best_steps']
         total_steps = len(steps)
-        
-        print(f"\n🎬 Visualizing {total_steps} steps...")
-        
+
+        print(f"\n[VISUALIZE] Visualizing {total_steps} steps...")
+
         for i, step in enumerate(steps, 1):
             print(f"\nStep {i}/{total_steps}: {step['description']}")
             self.visualize_step(step, i, total_steps, f"Start={best_vertex} | ")
-            
+
             if i < total_steps:
                 input("Press Enter for next step...")
-        
+
         # Final summary
-        print(f"\n✅ Algorithm Complete!")
-        print(f"   Final cycle: {' → '.join(map(str, result['best_cycle']))}")
+        print(f"\n[SUCCESS] Algorithm Complete!")
+        print(f"   Final cycle: {' -> '.join(map(str, result['best_cycle']))}")
         print(f"   Total weight: {result['best_weight']}")
         print(f"   Anchors used: {result['anchors']} in order {result['anchor_order_used']}")
-        
+
         return result
 
 # Quick demo function
