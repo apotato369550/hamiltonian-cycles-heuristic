@@ -69,12 +69,13 @@ class EuclideanGraphGenerator:
             distribution, distribution_params or {}
         )
 
-        # Compute pairwise distances
-        adjacency_matrix = self._compute_distance_matrix(coordinates)
-
-        # Scale to desired weight range if specified
+        # Scale coordinates to achieve desired weight range if specified
+        # This preserves the Euclidean property (weights match geometric distances)
         if weight_range is not None:
-            adjacency_matrix = self._scale_weights(adjacency_matrix, weight_range)
+            coordinates = self._scale_coordinates(coordinates, weight_range)
+
+        # Compute pairwise distances from (possibly scaled) coordinates
+        adjacency_matrix = self._compute_distance_matrix(coordinates)
 
         return adjacency_matrix, coordinates
 
@@ -279,6 +280,121 @@ class EuclideanGraphGenerator:
 
         squared_sum = sum((p1 - p2) ** 2 for p1, p2 in zip(point1, point2))
         return math.sqrt(squared_sum)
+
+    def _scale_coordinates(
+        self,
+        coordinates: List[Tuple[float, ...]],
+        weight_range: Tuple[float, float]
+    ) -> List[Tuple[float, ...]]:
+        """
+        Scale coordinates so that resulting edge weights fit the desired range.
+
+        This preserves the Euclidean property by scaling the coordinate space
+        rather than the weights directly.
+
+        Args:
+            coordinates: Original coordinate list
+            weight_range: Desired (min, max) for edge weights
+
+        Returns:
+            Scaled coordinates
+        """
+        if len(coordinates) < 2:
+            # Can't scale with fewer than 2 points
+            return coordinates
+
+        # Compute current distance range
+        n = len(coordinates)
+        distances = []
+        for i in range(n):
+            for j in range(i + 1, n):
+                dist = self._euclidean_distance(coordinates[i], coordinates[j])
+                distances.append(dist)
+
+        if not distances:
+            return coordinates
+
+        current_min = min(distances)
+        current_max = max(distances)
+
+        # Handle edge cases
+        EPSILON = 1e-10
+        if current_max < EPSILON or current_min == current_max:
+            # All points coincident or all distances equal - can't meaningfully scale
+            return coordinates
+
+        # Calculate scaling factor to map distance range to target range
+        # If current range is [current_min, current_max]
+        # and we want [target_min, target_max]
+        # We need: scaled_distance = scale_factor * distance
+        # So: target_max = scale_factor * current_max
+        # And: target_min = scale_factor * current_min
+        # This means: scale_factor = (target_max - target_min) / (current_max - current_min)
+        # BUT we also need to offset, so we use a linear transformation
+
+        target_min, target_max = weight_range
+
+        # Use linear transformation: new_dist = a * old_dist + b
+        # where new_min = a * old_min + b = target_min
+        # and   new_max = a * old_max + b = target_max
+        # Solving: a = (target_max - target_min) / (current_max - current_min)
+        #          b = target_min - a * current_min
+
+        # But for coordinate scaling, we can only scale (multiply), not translate distances
+        # So we use: scale_factor = target_max / current_max
+        # This ensures max distance matches target_max
+        # Then the min will be approximately target_min * (current_min / current_max)
+
+        # Better approach: use the midpoint
+        # Scale to match the range span
+        scale_factor = (target_max - target_min) / (current_max - current_min)
+
+        # Find centroid to scale around
+        dimensions = len(coordinates[0])
+        centroid = tuple(
+            sum(coord[d] for coord in coordinates) / len(coordinates)
+            for d in range(dimensions)
+        )
+
+        # Scale coordinates relative to centroid
+        # This multiplies all distances by scale_factor
+        scaled_coordinates = []
+        for coord in coordinates:
+            scaled_coord = tuple(
+                centroid[d] + (coord[d] - centroid[d]) * scale_factor
+                for d in range(dimensions)
+            )
+            scaled_coordinates.append(scaled_coord)
+
+        # Now scaled distances are in range [current_min * scale_factor, current_max * scale_factor]
+        # Which is [current_min * (target_max - target_min) / (current_max - current_min),
+        #           current_max * (target_max - target_min) / (current_max - current_min)]
+        # = [target_min - something, target_max - something]
+
+        # We need to apply additional scaling to shift this to [target_min, target_max]
+        # Recompute distances
+        new_distances = []
+        for i in range(n):
+            for j in range(i + 1, n):
+                dist = self._euclidean_distance(scaled_coordinates[i], scaled_coordinates[j])
+                new_distances.append(dist)
+
+        new_min = min(new_distances)
+        new_max = max(new_distances)
+
+        # Apply a final scaling factor to map [new_min, new_max] to [target_min, target_max]
+        # We want new_max * final_scale = target_max
+        final_scale = target_max / new_max if new_max > EPSILON else 1.0
+
+        final_coordinates = []
+        for coord in scaled_coordinates:
+            final_coord = tuple(
+                centroid[d] + (coord[d] - centroid[d]) * final_scale
+                for d in range(dimensions)
+            )
+            final_coordinates.append(final_coord)
+
+        return final_coordinates
 
     def _scale_weights(
         self,

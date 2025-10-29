@@ -329,22 +329,30 @@ class QuasiMetricGraphGenerator:
         )
 
         # Add controlled asymmetry
+        # Apply perturbations to pairs of edges (i,j) and (j,i) separately
         matrix = [[0.0] * num_vertices for _ in range(num_vertices)]
 
         for i in range(num_vertices):
-            for j in range(num_vertices):
-                if i == j:
-                    matrix[i][j] = 0.0
-                else:
-                    base_weight = base_matrix[i][j]
-                    # Asymmetric perturbation
-                    perturbation = random.uniform(-asymmetry_factor, asymmetry_factor)
-                    new_weight = base_weight * (1 + perturbation)
-                    new_weight = max(weight_range[0], min(weight_range[1], new_weight))
-                    matrix[i][j] = new_weight
+            for j in range(i + 1, num_vertices):
+                # Get base symmetric weight
+                base_weight = base_matrix[i][j]
 
-        # Ensure triangle inequality still holds
-        self._enforce_triangle_inequality(matrix)
+                # Apply independent perturbations for forward and backward directions
+                perturb_forward = random.uniform(-asymmetry_factor, asymmetry_factor)
+                perturb_backward = random.uniform(-asymmetry_factor, asymmetry_factor)
+
+                # Calculate new weights and clamp to range
+                weight_ij = base_weight * (1 + perturb_forward)
+                weight_ji = base_weight * (1 + perturb_backward)
+
+                matrix[i][j] = max(weight_range[0], min(weight_range[1], weight_ij))
+                matrix[j][i] = max(weight_range[0], min(weight_range[1], weight_ji))
+
+        # Ensure triangle inequality holds after perturbations
+        # Run this multiple times if needed to ensure convergence
+        # because clamping before Floyd-Warshall can create issues
+        for _ in range(2):  # Run twice to ensure full enforcement
+            self._enforce_triangle_inequality(matrix)
 
         return matrix
 
