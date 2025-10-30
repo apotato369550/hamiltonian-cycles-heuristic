@@ -240,23 +240,23 @@ class TestQuasiMetricGenerator(unittest.TestCase):
     def test_metricity(self):
         """Test that quasi-metric graphs satisfy triangle inequality.
 
-        Note: The current verifier checks ALL six permutations of triangle
-        inequality for each triplet (i,j,k), but quasi-metrics (asymmetric)
-        only need to satisfy d(x,z) <= d(x,y) + d(y,z), not all orderings.
-        The verifier's _check_triplet function needs to be updated to handle
-        asymmetric graphs correctly. For now, we check that most triplets pass.
+        Quasi-metric graphs are asymmetric but still satisfy the triangle
+        inequality for forward paths: d(x,z) <= d(x,y) + d(y,z).
+
+        The verifier now supports asymmetric mode (symmetric=False) which only
+        checks valid forward-path constraints instead of all permutations.
         """
         matrix = generate_quasi_metric_graph(num_vertices=10, random_seed=42)
 
         verifier = GraphVerifier(fast_mode=False)
-        result = verifier.verify_metricity(matrix)
+        # Use symmetric=False for quasi-metric (asymmetric) graphs
+        result = verifier.verify_metricity(matrix, symmetric=False)
 
-        # Quasi-metric graphs should have high metricity score (>= 0.9)
-        # even if not perfect due to verifier checking extra conditions
-        self.assertGreaterEqual(
-            result.details['metricity_score'],
-            0.9,
-            f"Quasi-metric graph should have metricity score >= 0.9, got {result.details['metricity_score']}"
+        # Quasi-metric graphs should pass all valid triangle inequality checks
+        self.assertTrue(
+            result.passed,
+            f"Quasi-metric graph should satisfy triangle inequality. "
+            f"Violations: {result.details['violations']}, Score: {result.details['metricity_score']}"
         )
 
 

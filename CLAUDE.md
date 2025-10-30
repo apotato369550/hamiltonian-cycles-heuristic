@@ -1,6 +1,6 @@
 # Directives for Claude Instances
 
-This file contains important context and directives for Claude Code instances working on this TSP graph generation project. Last updated: 10-29-2025
+This file contains important context and directives for Claude Code instances working on this TSP graph generation project. Last updated: 10-30-2025
 
 ---
 
@@ -87,22 +87,24 @@ This file contains important context and directives for Claude Code instances wo
 
 ## Current Known Issues
 
-### Issue #1: Verifier Checks Invalid Constraints for Asymmetric Graphs
+### ~~Issue #1: Verifier Checks Invalid Constraints for Asymmetric Graphs~~ ✅ FIXED (10-30-2025)
 
-**Location:** `src/graph_generation/verification.py` lines 228-235
+**Status:** RESOLVED
 
-**Problem:**
+**Solution Implemented:**
+- Added `symmetric: bool = True` parameter to `verify_metricity()` and `_check_triplet()`
+- Auto-detects symmetry when parameter is None
+- For asymmetric graphs, only checks valid forward-path constraints
+- See `docs/10-30-2025_change.md` for details
+
+**Usage:**
 ```python
-# This checks ALL six permutations, but only one direction is valid for directed graphs
-if matrix[j][k] > matrix[i][j] + matrix[i][k] + TOLERANCE:
+# For asymmetric/quasi-metric graphs
+result = verifier.verify_metricity(matrix, symmetric=False)
+
+# For symmetric graphs or auto-detect (default)
+result = verifier.verify_metricity(matrix)  # Auto-detects
 ```
-
-**Correct Approach:**
-- Split verification into symmetric and asymmetric modes
-- For asymmetric graphs, only check: `d(i,j) ≤ d(i,k) + d(k,j)` (forward paths)
-- Current workaround: Use metricity_score threshold instead of binary pass/fail
-
-**Priority:** Medium (workaround exists, but fix would improve accuracy)
 
 ---
 
@@ -119,10 +121,15 @@ if matrix[j][k] > matrix[i][j] + matrix[i][k] + TOLERANCE:
 - 2 Consistency tests
 - 3 Performance benchmarks
 
-**Recent Test Changes (10-29-2025):**
+**Recent Test Changes:**
+
+**10-30-2025:**
+1. `test_metricity()` (QuasiMetric) - Now uses `symmetric=False` parameter and expects `passed=True` (line 253)
+
+**10-29-2025:**
 1. `test_weight_scaling()` - Changed to only verify max distance (line 76)
 2. `test_very_narrow_weight_range()` - Now uses completion strategy (line 344)
-3. `test_metricity()` (QuasiMetric) - Uses metricity_score >= 0.9 (line 256)
+3. `test_metricity()` (QuasiMetric) - Initially used metricity_score >= 0.9 (superseded by 10-30 fix)
 
 **When Modifying Tests:**
 - Run full test suite: `python src/tests/test_graph_generators.py`
@@ -151,7 +158,9 @@ src/
   main.py                    - Demo script
 
 docs/
-  10-29-2025_change.md      - Change log with detailed analysis
+  10-29-2025_change.md      - Bug fixes: Euclidean scaling, quasi-metrics, test updates
+  10-30-2025_change.md      - Asymmetric verification & storage query fixes
+  README.md                 - Documentation index
 
 config/
   example_batch_config.yaml - Example configuration

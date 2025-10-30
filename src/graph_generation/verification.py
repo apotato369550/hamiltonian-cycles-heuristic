@@ -117,15 +117,32 @@ class GraphVerifier:
             errors=errors
         )
 
-    def verify_metricity(self, adjacency_matrix: List[List[float]]) -> VerificationResult:
+    def verify_metricity(
+        self,
+        adjacency_matrix: List[List[float]],
+        symmetric: Optional[bool] = None
+    ) -> VerificationResult:
         """
         Verify that the graph satisfies the triangle inequality.
 
+        Args:
+            adjacency_matrix: The graph adjacency matrix
+            symmetric: Whether the graph is symmetric. If None, auto-detects.
+                      - True: Checks all triangle inequalities (for symmetric/metric graphs)
+                      - False: Only checks forward-path inequalities (for asymmetric/quasi-metric graphs)
+
         For large graphs in fast mode, samples triplets randomly.
+        For symmetric graphs, checks all triangle inequality permutations.
+        For asymmetric graphs, only checks valid forward-path constraints.
         """
         n = len(adjacency_matrix)
         errors = []
         violations = []
+
+        # Auto-detect symmetry if not specified
+        if symmetric is None:
+            symmetry_result = self.verify_symmetry(adjacency_matrix)
+            symmetric = symmetry_result.passed
 
         if self.fast_mode and n > 50:
             # Sample random triplets
@@ -136,8 +153,8 @@ class GraphVerifier:
                 i, j, k = sorted(random.sample(range(n), 3))
                 checked += 1
 
-                # Check all three triangle inequalities
-                triplet_violations = self._check_triplet(adjacency_matrix, i, j, k)
+                # Check triangle inequalities (symmetric or asymmetric mode)
+                triplet_violations = self._check_triplet(adjacency_matrix, i, j, k, symmetric)
                 violations.extend(triplet_violations)
 
                 if triplet_violations and len(errors) < 10:
@@ -160,7 +177,7 @@ class GraphVerifier:
                 for j in range(i + 1, n):
                     for k in range(j + 1, n):
                         total_triplets += 1
-                        triplet_violations = self._check_triplet(adjacency_matrix, i, j, k)
+                        triplet_violations = self._check_triplet(adjacency_matrix, i, j, k, symmetric)
                         violations.extend(triplet_violations)
 
                         if triplet_violations and len(errors) < 10:
@@ -197,17 +214,28 @@ class GraphVerifier:
         matrix: List[List[float]],
         i: int,
         j: int,
-        k: int
+        k: int,
+        symmetric: bool = True
     ) -> List[Dict[str, Any]]:
         """
         Check triangle inequality for a single triplet.
 
-        Returns list of violations (empty if none).
+        Args:
+            matrix: Adjacency matrix
+            i, j, k: Vertex indices for the triplet
+            symmetric: If True, check all triangle inequalities (for symmetric graphs).
+                      If False, only check forward-path inequalities (for asymmetric/quasi-metric graphs).
+
+        Returns:
+            List of violations (empty if none).
+
+        For symmetric graphs, checks all three inequalities.
+        For asymmetric graphs, only checks valid forward-path constraints.
         """
         violations = []
         TOLERANCE = 1e-9  # Floating-point tolerance
 
-        # Check i-j <= i-k + k-j
+        # Check 1: i→j ≤ i→k + k→j (ALWAYS VALID for both symmetric and asymmetric)
         if matrix[i][j] > matrix[i][k] + matrix[k][j] + TOLERANCE:
             violations.append({
                 'i': i, 'j': j, 'k': k,
@@ -216,7 +244,7 @@ class GraphVerifier:
                 'violation': matrix[i][j] - (matrix[i][k] + matrix[k][j])
             })
 
-        # Check i-k <= i-j + j-k
+        # Check 2: i→k ≤ i→j + j→k (ALWAYS VALID for both symmetric and asymmetric)
         if matrix[i][k] > matrix[i][j] + matrix[j][k] + TOLERANCE:
             violations.append({
                 'i': i, 'j': k, 'k': j,
@@ -225,14 +253,27 @@ class GraphVerifier:
                 'violation': matrix[i][k] - (matrix[i][j] + matrix[j][k])
             })
 
-        # Check j-k <= i-j + i-k
-        if matrix[j][k] > matrix[i][j] + matrix[i][k] + TOLERANCE:
-            violations.append({
-                'i': j, 'j': k, 'k': i,
-                'direct': matrix[j][k],
-                'indirect': matrix[i][j] + matrix[i][k],
-                'violation': matrix[j][k] - (matrix[i][j] + matrix[i][k])
-            })
+        # Check 3: Different logic for symmetric vs asymmetric graphs
+        if symmetric:
+            # For symmetric graphs: j→k ≤ i→j + i→k
+            # This works because d(i,j) = d(j,i) in symmetric graphs
+            if matrix[j][k] > matrix[i][j] + matrix[i][k] + TOLERANCE:
+                violations.append({
+                    'i': j, 'j': k, 'k': i,
+                    'direct': matrix[j][k],
+                    'indirect': matrix[i][j] + matrix[i][k],
+                    'violation': matrix[j][k] - (matrix[i][j] + matrix[i][k])
+                })
+        else:
+            # For asymmetric graphs: j→k ≤ j→i + i→k (forward path only)
+            # This uses the actual j→i edge, not the reverse of i→j
+            if matrix[j][k] > matrix[j][i] + matrix[i][k] + TOLERANCE:
+                violations.append({
+                    'i': j, 'j': k, 'k': i,
+                    'direct': matrix[j][k],
+                    'indirect': matrix[j][i] + matrix[i][k],
+                    'violation': matrix[j][k] - (matrix[j][i] + matrix[i][k])
+                })
 
         return violations
 

@@ -22,6 +22,9 @@ class GraphStorage:
     collections of graphs based on properties.
     """
 
+    # JSON files to exclude from graph loading (metadata/report files, not graph instances)
+    NON_GRAPH_FILES = {'manifest.json', 'generation_report.json', 'analysis_report.json'}
+
     def __init__(self, base_directory: str = "data/graphs"):
         """
         Initialize the storage system.
@@ -177,8 +180,8 @@ class GraphStorage:
                 manifest = json.load(f)
             filenames = [item['filename'] for item in manifest['graphs']]
         else:
-            # Find all JSON files in directory
-            filenames = [f.name for f in batch_dir.glob('*.json') if f.name != 'manifest.json']
+            # Find all JSON files in directory, excluding non-graph files
+            filenames = [f.name for f in batch_dir.glob('*.json') if f.name not in self.NON_GRAPH_FILES]
 
         # Load all graphs
         graphs = []
@@ -229,8 +232,8 @@ class GraphStorage:
         else:
             json_files = list(search_dir.rglob('*.json'))
 
-        # Filter out manifest files
-        json_files = [f for f in json_files if f.name != 'manifest.json']
+        # Filter out non-graph files (manifest and report files)
+        json_files = [f for f in json_files if f.name not in self.NON_GRAPH_FILES]
 
         # Load and filter graphs
         matching_graphs = []
@@ -272,7 +275,7 @@ class GraphStorage:
         """
         # Search all JSON files
         for filepath in self.base_directory.rglob('*.json'):
-            if filepath.name == 'manifest.json':
+            if filepath.name in self.NON_GRAPH_FILES:
                 continue
 
             try:
@@ -297,7 +300,7 @@ class GraphStorage:
             True if deleted, False if not found
         """
         for filepath in self.base_directory.rglob('*.json'):
-            if filepath.name == 'manifest.json':
+            if filepath.name in self.NON_GRAPH_FILES:
                 continue
 
             try:
@@ -324,7 +327,7 @@ class GraphStorage:
         by_size = {}
 
         for filepath in self.base_directory.rglob('*.json'):
-            if filepath.name == 'manifest.json':
+            if filepath.name in self.NON_GRAPH_FILES:
                 continue
 
             try:
@@ -374,7 +377,7 @@ class GraphStorage:
         graphs_info = []
 
         for filepath in self.base_directory.rglob('*.json'):
-            if filepath.name == 'manifest.json':
+            if filepath.name in self.NON_GRAPH_FILES:
                 continue
 
             try:
