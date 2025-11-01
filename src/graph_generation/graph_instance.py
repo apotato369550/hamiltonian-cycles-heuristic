@@ -11,7 +11,7 @@ import hashlib
 import uuid
 from typing import List, Dict, Any, Optional, Tuple
 from dataclasses import dataclass, asdict
-from datetime import datetime
+from datetime import datetime, timezone
 import numpy as np
 
 
@@ -293,7 +293,7 @@ def create_graph_instance(
         size=size,
         generation_params=generation_params,
         random_seed=random_seed,
-        timestamp=datetime.utcnow().isoformat(),
+        timestamp=datetime.now(timezone.utc).isoformat(),
         code_version=None  # Can be set to git commit hash
     )
 
