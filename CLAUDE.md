@@ -1,118 +1,320 @@
-# Directives for Claude Instances
+# TSP Anchor-Based Heuristic Research Platform
 
-This file contains important context and directives for Claude Code instances working on this TSP graph generation project. Last updated: 10-30-2025
+Multi-agent coordinated research system for investigating anchor-based TSP heuristics through systematic experimentation, feature engineering, and machine learning.
+
+Last updated: 11-02-2025
 
 ---
 
-## Project Overview
+## Vision and Goals
 
-**Project Name:** Hamiltonian Cycles Heuristic - TSP Graph Generation System
+Build a complete research pipeline to answer: **Can we predict which vertices make good TSP tour starting points (anchors) by analyzing graph structure?**
 
-**Purpose:** Generate diverse graph instances for Traveling Salesman Problem (TSP) research
+This investigation combines:
+- Graph generation for controlled experimentation
+- Algorithm benchmarking to measure anchor quality
+- Feature engineering to quantify graph properties
+- Machine learning to predict optimal anchors
+- Statistical analysis to extract publishable insights
 
-**Architecture:** Modular Python package with:
-- Multiple graph generators (Euclidean, Metric, Random)
-- Graph verification system
-- Batch generation pipeline
+The platform enables **interpretable, reproducible TSP heuristic research** with lightweight ML replacing exhaustive search.
+
+---
+
+## Project Status: Phase 1 Complete
+
+### Phase 1: Graph Generation System (COMPLETE)
+Status: Fully implemented, tested, and production-ready
+
+Components:
+- Euclidean, metric, quasi-metric, and random graph generators
+- Graph property verification (metricity, symmetry, Euclidean distances)
+- Batch generation pipeline with YAML configuration
+- Storage and retrieval system
 - Visualization utilities
-- Comprehensive test suite (34 tests, all passing)
+- Collection analysis tools
+- 34 comprehensive tests (all passing)
+
+Key files:
+- `src/graph_generation/` - Complete graph generation package
+- `src/tests/test_graph_generators.py` - Test suite
+- `config/example_batch_config.yaml` - Configuration examples
+
+### Phase 2: Algorithm Benchmarking (NEXT)
+Status: Not yet started
+
+Will implement:
+- Unified algorithm interface
+- Baseline algorithms (nearest neighbor, greedy, Christofides)
+- Anchor-based heuristics (single-anchor, best-anchor, multi-anchor)
+- Tour validation and quality metrics
+- Batch benchmarking system
+- Results storage and statistical analysis
+- Performance comparison visualizations
+
+### Phase 3: Feature Engineering (FUTURE)
+Status: Not yet started
+
+Will extract vertex features:
+- Weight-based statistics
+- Topological measures (centrality, clustering)
+- MST-based structural importance
+- Neighborhood properties
+- Anchor quality labeling system
+
+### Phase 4: Machine Learning (FUTURE)
+Status: Not yet started
+
+Will train models to predict:
+- Which vertices make good anchors
+- Using linear regression (interpretability focus)
+- With tree-based comparison baselines
+- Cross-validated on diverse graph types
+
+### Phase 5: Pipeline Integration (FUTURE)
+Status: Not yet started
+
+Will create:
+- End-to-end experiment orchestration
+- Configuration management
+- Reproducibility infrastructure
+- Performance monitoring
+
+### Phase 6: Analysis and Insights (ONGOING)
+Status: Continuous throughout all phases
+
+Will produce:
+- Publication-quality visualizations
+- Statistical hypothesis testing
+- Research insights and theory building
+- Paper-ready findings
 
 ---
 
-## Critical Technical Principles
+## Architectural Principles
 
-### 1. Euclidean Property Must Be Preserved
+### 1. Modularity Over Monoliths
+Each phase is independent with clear interfaces. Can run Phase 2 without re-running Phase 1 if graphs already exist.
 
-**PRINCIPLE:** Edge weights in Euclidean graphs MUST equal geometric distances from coordinates.
+### 2. Reproducibility First
+Everything controlled by configuration files and random seeds. Same config = same results, always.
 
-**Context:** In previous work (10-29-2025), the system was using weight scaling which broke this property.
+### 3. Interpretability Over Complexity
+Favor simple models (linear regression) over complex ones (deep learning). Research goal is understanding, not just prediction.
 
-**Correct Approach:**
-- Scale COORDINATES, not weights
-- Coordinate scaling multiplies all distances by a constant factor
-- This preserves the Euclidean property and geometric relationships
+### 4. Test Everything
+Each component has comprehensive tests. No untested code in production pipeline.
 
-**Implementation:**
-- See `src/graph_generation/euclidean_generator.py` - `_scale_coordinates()` method
-- Uses centroid-based scaling
-- Handles edge cases (coincident points, identical distances)
+### 5. Document Decisions
+Critical principles documented here. Implementation logs in agent directories. Changes tracked in `docs/`.
 
-**Limitation to Remember:**
-- Coordinate scaling can match the MAXIMUM distance in a target range
-- Cannot independently set MINIMUM distance (mathematical limitation)
-- For narrow weight ranges, the minimum may not equal target_min
+### 6. Fail Fast, Fail Clearly
+Validation at every step. Invalid graphs rejected during generation. Invalid tours rejected during benchmarking. Clear error messages.
 
-### 2. Quasi-Metrics Require Directional Understanding
+### 7. Optimize Later
+Build clean, correct code first. Profile and optimize only proven bottlenecks.
 
-**PRINCIPLE:** Quasi-metrics (asymmetric metrics) satisfy triangle inequality ONLY for forward paths.
+---
 
-**Constraint:** `d(x,z) ≤ d(x,y) + d(y,z)` for all x,y,z
+## Agent Coordination
 
-**What NOT to Check:**
-- `d(j,k) ≤ d(i,j) + d(i,k)` (requires going backwards)
-- Not all six permutations of triangle inequalities
+This project uses a multi-agent architecture for systematic development:
 
-**Current Verifier Issue:**
-- `src/graph_generation/verification.py` checks all six permutations
-- Causes false positives for quasi-metric graphs
-- Workaround: Use metricity_score >= 0.9 instead of passed=True
-- TODO: Update `_check_triplet()` to handle asymmetric graphs correctly
+### Foreman (Orchestrator)
+Manages CLAUDE.md, coordinates phases, delegates to specialized agents
 
-**When Working on Verification:**
-- Remember that asymmetric graphs need special handling
-- A matrix[i][j] can differ from matrix[j][i]
-- Only check paths that follow directed edges
+### Planner (Sonnet 4, Blue)
+Creates detailed implementation plans for complex phases. Produces plans optimized for execution by less capable agents.
 
-### 3. MST vs Completion Strategies for Metric Graphs
+Work logged in: `/planner/dd-mm-yyyy_[plan_name].md`
 
-**MST Strategy:**
+### Builder (Haiku, Green)
+Implements plans, writes production code following architectural principles.
+
+Work logged in: `/builder/dd-mm-yyyy_[build_name].md`
+
+### Validator (Haiku, Red)
+Runs tests, verifies quality gates, documents issues systematically.
+
+Work logged in: `/validator/dd-mm-yyyy_[validation_name].md`
+
+### Debugger (Haiku, Yellow)
+Executes debugging plans from Planner to resolve Validator-identified issues.
+
+Work logged in: `/debugger/dd-mm-yyyy_[debug_name].md`
+
+### Log Format Convention
+All agent logs must be CONCISE and BRIEF:
+- Use bullet points, not prose
+- Focus on: what was done, key decisions, outcomes
+- Delegate log writing to Gemini when possible to save context
+
+---
+
+## Critical Technical Principles (Phase 1)
+
+These principles were learned during Phase 1 implementation and must be respected in future phases:
+
+### Principle 1: Euclidean Property Must Be Preserved
+Edge weights in Euclidean graphs MUST equal geometric distances from coordinates.
+
+Correct approach: Scale COORDINATES, not weights
+- Coordinate scaling multiplies all distances by constant factor
+- Preserves Euclidean property and geometric relationships
+- See `src/graph_generation/euclidean_generator.py` for implementation
+
+Limitation: Coordinate scaling can match MAXIMUM distance in target range but cannot independently set MINIMUM distance (mathematical limitation).
+
+### Principle 2: Quasi-Metrics Require Directional Understanding
+Quasi-metrics (asymmetric metrics) satisfy triangle inequality ONLY for forward paths.
+
+Constraint: `d(x,z) ≤ d(x,y) + d(y,z)` for all x,y,z (forward direction only)
+
+Do NOT check: `d(j,k) ≤ d(i,j) + d(i,k)` (requires going backwards)
+
+Implementation: `verify_metricity()` accepts `symmetric=False` parameter for proper asymmetric graph verification.
+
+### Principle 3: MST vs Completion Strategies for Metric Graphs
+
+MST Strategy:
 - Generates tree edges with specified weights
 - Computes shortest paths (which SUM tree edges)
 - Results in WIDE distribution of final weights
-- **USE FOR:** Normal metric graphs, when distribution spread is acceptable
-- **AVOID:** Narrow weight ranges (creates very wide output distribution)
+- Use for: Normal metric graphs when distribution spread is acceptable
 
-**Completion Strategy:**
+Completion Strategy:
 - Samples ALL edge weights directly from specified range
-- Uses Floyd-Warshall only to REDUCE weights (no summing)
+- Uses Floyd-Warshall only to REDUCE weights
 - Keeps weights WITHIN original range
-- **USE FOR:** Narrow weight ranges, controlled distributions
-- **BEST FOR:** Quasi-metric generation with narrow ranges
+- Use for: Narrow weight ranges, controlled distributions, quasi-metric generation
 
-**Example:**
-- MST with range (10.0, 10.01) produces std dev ~14.6 ❌
-- Completion with range (10.0, 10.01) produces std dev ~0.05 ✅
+Example: MST with range (10.0, 10.01) produces std dev ~14.6. Completion produces std dev ~0.05.
 
 ---
 
-## Current Known Issues
+## Phase-Specific Guidelines
 
-### ~~Issue #1: Verifier Checks Invalid Constraints for Asymmetric Graphs~~ ✅ FIXED (10-30-2025)
+### When Working on Phase 2 (Benchmarking)
+Reference principles:
+- All tours must be validated as proper Hamiltonian cycles
+- Tour quality = sum of edge weights in cycle
+- Implement exact algorithms for small graphs to compute optimality gaps
+- Use deterministic tie-breaking in greedy algorithms
+- Track detailed metadata (which anchor used, runtime, success/failure)
 
-**Status:** RESOLVED
+Critical design decisions:
+- Algorithm interface must support: solve(graph) → tour, quality, metadata
+- Registry system for algorithm selection by name
+- Timeout handling for long-running algorithms
+- Statistical comparison framework (paired tests, effect sizes)
 
-**Solution Implemented:**
-- Added `symmetric: bool = True` parameter to `verify_metricity()` and `_check_triplet()`
-- Auto-detects symmetry when parameter is None
-- For asymmetric graphs, only checks valid forward-path constraints
-- See `docs/10-30-2025_change.md` for details
+### When Working on Phase 3 (Features)
+Reference principles:
+- Features must be interpretable (no learned embeddings)
+- Compute expensive features (betweenness centrality) once and cache
+- Normalize features by graph statistics (z-scores, percentiles)
+- Track feature computation cost for large graphs
+- Validate: no NaN, no infinite values, reasonable ranges
 
-**Usage:**
-```python
-# For asymmetric/quasi-metric graphs
-result = verifier.verify_metricity(matrix, symmetric=False)
+Critical design decisions:
+- Modular feature extractors (weight-based, MST-based, centrality, etc.)
+- Feature naming convention: descriptive and self-explanatory
+- Anchor quality labeling strategy (rank-based vs absolute)
+- Balance feature count with interpretability
 
-# For symmetric graphs or auto-detect (default)
-result = verifier.verify_metricity(matrix)  # Auto-detects
+### When Working on Phase 4 (ML)
+Reference principles:
+- Linear regression is PRIMARY model (interpretability > accuracy)
+- Tree models as comparison baselines only
+- NO deep learning or neural networks
+- Feature importance must be extractable and explainable
+- Cross-validation must respect graph boundaries (no data leakage)
+
+Critical design decisions:
+- Problem formulation: regression vs classification vs ranking
+- Train/test split: stratified by graph type
+- Hyperparameter tuning via nested cross-validation
+- Evaluation metric: both statistical fit (R²) and practical performance (tour quality)
+- Model interpretation: coefficient analysis, SHAP values
+
+### When Working on Phase 5 (Integration)
+Reference principles:
+- Configuration files control ALL experimental parameters
+- Pipeline stages are idempotent and resumable
+- Intermediate results saved incrementally
+- Git commit hash recorded with every experiment
+- Parallelization respects resource limits
+
+Critical design decisions:
+- YAML configuration format with validation
+- Experiment tracking database (SQLite or JSON)
+- Error handling: try-continue pattern for recoverable errors
+- Checkpointing for long-running experiments
+- Automated report generation
+
+### When Working on Phase 6 (Analysis)
+Reference principles:
+- Statistical significance AND effect size required for claims
+- Publication-quality figures (300 DPI, colorblind-friendly)
+- Acknowledge limitations explicitly
+- Reproducibility: all analysis from saved results only
+- Case studies illustrate quantitative findings
+
+Critical design decisions:
+- Research question framework drives analysis structure
+- Comparative analysis: algorithm performance by graph type
+- Feature importance: which features predict anchor quality
+- Model evaluation: prediction accuracy vs practical utility
+- Insight synthesis: patterns → explanations → theory
+
+---
+
+## Directory Structure
+
+```
+/
+├── CLAUDE.md                          # This file - project context
+├── /src/
+│   ├── /graph_generation/             # Phase 1 (COMPLETE)
+│   ├── /algorithms/                   # Phase 2 (FUTURE)
+│   ├── /features/                     # Phase 3 (FUTURE)
+│   ├── /ml/                          # Phase 4 (FUTURE)
+│   ├── /pipeline/                    # Phase 5 (FUTURE)
+│   └── /tests/
+├── /planner/                          # Planner agent logs
+│   └── dd-mm-yyyy_plan_name.md
+├── /builder/                          # Builder agent logs
+│   └── dd-mm-yyyy_build_name.md
+├── /validator/                        # Validator agent logs
+│   └── dd-mm-yyyy_validation_name.md
+├── /debugger/                         # Debugger agent logs
+│   └── dd-mm-yyyy_debug_name.md
+├── /docs/                            # Project documentation
+│   ├── 10-29-2025_change.md          # Phase 1 bug fixes
+│   ├── 10-30-2025_change.md          # Phase 1 improvements
+│   └── README.md
+├── /guides/                          # Metaprompt specifications
+│   ├── README.md                     # Master guide overview
+│   ├── 01_graph_generation_system.md
+│   ├── 02_algorithm_benchmarking_pipeline.md
+│   ├── 03_feature_engineering_system.md
+│   ├── 04_machine_learning_component.md
+│   ├── 05_pipeline_integration_workflow.md
+│   └── 06_analysis_visualization_insights.md
+├── /config/                          # Configuration examples
+├── /data/                            # Generated graphs (not in git)
+├── /results/                         # Experimental results (not in git)
+├── /models/                          # Trained models (not in git)
+└── /references/                      # Original reference implementations
 ```
 
 ---
 
-## Test Suite Status
+## Test Suite Status (Phase 1)
 
-**All 34 Tests Passing:** ✅
+All 34 tests passing.
 
-**Test Coverage:**
+Test coverage:
 - 10 Euclidean generator tests
 - 6 Metric generator tests
 - 3 Quasi-metric generator tests
@@ -121,235 +323,178 @@ result = verifier.verify_metricity(matrix)  # Auto-detects
 - 2 Consistency tests
 - 3 Performance benchmarks
 
-**Recent Test Changes:**
-
-**10-30-2025:**
-1. `test_metricity()` (QuasiMetric) - Now uses `symmetric=False` parameter and expects `passed=True` (line 253)
-
-**10-29-2025:**
-1. `test_weight_scaling()` - Changed to only verify max distance (line 76)
-2. `test_very_narrow_weight_range()` - Now uses completion strategy (line 344)
-3. `test_metricity()` (QuasiMetric) - Initially used metricity_score >= 0.9 (superseded by 10-30 fix)
-
-**When Modifying Tests:**
-- Run full test suite: `python src/tests/test_graph_generators.py`
-- Verify all 34 tests pass before committing
-- Add documentation explaining any changes to test expectations
-
----
-
-## File Structure
-
-```
-src/
-  graph_generation/
-    __init__.py
-    graph_instance.py        - Core data structure
-    euclidean_generator.py   - Euclidean TSP graphs
-    metric_generator.py      - Metric/quasi-metric graphs
-    random_generator.py      - Random baseline graphs
-    verification.py          - Property verification
-    storage.py              - Persistence
-    batch_generator.py      - Batch pipeline
-    visualization.py        - Visualization utilities
-    collection_analysis.py  - Collection analysis
-  tests/
-    test_graph_generators.py - Comprehensive test suite
-  main.py                    - Demo script
-
-docs/
-  10-29-2025_change.md      - Bug fixes: Euclidean scaling, quasi-metrics, test updates
-  10-30-2025_change.md      - Asymmetric verification & storage query fixes
-  README.md                 - Documentation index
-
-config/
-  example_batch_config.yaml - Example configuration
-
-CLAUDE.md                   - This file
-```
-
----
-
-## Common Tasks and How to Approach Them
-
-### Task: Fix a Graph Generator Bug
-
-1. **Identify the bug:**
-   - Run tests: `python src/tests/test_graph_generators.py`
-   - Check which test(s) fail
-   - Read the test to understand expected behavior
-
-2. **Understand the principle:**
-   - Is it about Euclidean property? → See "Critical Principle #1"
-   - Is it about triangle inequality? → See "Critical Principle #2"
-   - Is it about weight ranges? → See "Critical Principle #3"
-
-3. **Check past solutions:**
-   - Review `docs/10-29-2025_change.md` for similar issues
-   - Look at implementation in relevant generator file
-
-4. **Test your fix:**
-   - Run specific test: `python -m pytest src/tests/test_graph_generators.py::TestClass::test_name`
-   - Run full suite: `python src/tests/test_graph_generators.py`
-   - Verify no regressions
-
-### Task: Improve the Verifier
-
-1. **Current State:**
-   - Checks all six permutations of triangle inequalities
-   - Works fine for symmetric graphs
-   - Over-checks for asymmetric graphs
-
-2. **Proposed Improvement:**
-   - Add `symmetric=True` parameter to `verify_metricity()`
-   - For symmetric: keep current behavior
-   - For asymmetric: only check forward path constraints
-
-3. **Testing:**
-   - Update `test_metricity()` for QuasiMetric to use `passed=True` once fixed
-   - Should still pass with same random_seed=42
-
-### Task: Add a New Generator Type
-
-1. **Choose your strategy:**
-   - Based on constraints needed (Euclidean? Metric? Random?)
-   - Consider: weight range, distribution shape, symmetry
-
-2. **Implement the generator:**
-   - Create new class in appropriate file or new file
-   - Follow the pattern of existing generators
-   - Implement `generate()` method returning (adjacency_matrix, optional_metadata)
-
-3. **Add tests:**
-   - Create test class in `test_graph_generators.py`
-   - Test: basic generation, determinism (same seed = same graph), properties
-   - Add edge cases (single vertex, identical weights, etc.)
-   - Run full suite and verify all 34 tests still pass
-
-4. **Verify properties:**
-   - Use `GraphVerifier` to check properties
-   - Document any expected violations (e.g., non-metric random graphs)
+Run tests: `python src/tests/test_graph_generators.py`
 
 ---
 
 ## Environment Setup
 
-**Python Version:** 3.8+ (tested with venv)
+Python 3.8+ required
 
-**Key Dependencies:**
-- numpy - Numerical computations
-- scipy - Scientific algorithms
+Key dependencies:
+- numpy, scipy - Numerical computation
 - matplotlib - Visualization
 - pyyaml - Configuration
 - pytest - Testing
 
-**Installation:**
+Installation:
 ```bash
 python -m venv venv
-venv/Scripts/activate
+source venv/bin/activate  # Linux/Mac
+venv/Scripts/activate     # Windows
 pip install -r requirements.txt
 ```
 
-**Note:** On MSYS2/MinGW environments, you may need to use conda or standard Python from python.org due to wheel compatibility issues.
+---
+
+## Development Workflow
+
+### Starting New Phase
+1. Foreman reads guides and creates high-level plan
+2. Planner creates detailed implementation plan
+3. Builder implements following plan
+4. Validator tests and documents issues
+5. Debugger resolves issues (with Planner guidance if needed)
+6. Repeat until phase complete
+
+### Quality Gates
+Each phase must pass before next begins:
+- All tests pass
+- Code follows architectural principles
+- Documentation updated
+- Results reproducible
+
+### Documentation Standards
+- Agent logs: Concise bullet points (use Gemini for context saving)
+- Code comments: Explain WHY not WHAT
+- CLAUDE.md: Updated only for architectural changes or new principles
+- `docs/`: Dated change logs for significant updates
 
 ---
 
-## Performance Considerations
+## Research Timeline Estimates
 
-**Generation Times (from benchmarks):**
-- Euclidean 100-vertex: ~0.5ms
-- Metric 100-vertex: ~2ms (MST strategy) or ~5ms (completion)
-- Random 100-vertex: ~0.3ms
-- Batch of 100 graphs: ~0.5 seconds
+- Phase 1: Graph Generation - COMPLETE (4 weeks actual)
+- Phase 2: Benchmarking - 2-3 weeks
+- Phase 3: Feature Engineering - 2-3 weeks
+- Phase 4: ML Component - 1-2 weeks
+- Phase 5: Integration - 1-2 weeks
+- Phase 6: Analysis - Ongoing throughout
 
-**Memory:**
-- 100-vertex graph: ~80KB (dense matrix)
-- Batch of 1000 graphs: ~80MB
+Total estimated: 10-14 weeks for complete pipeline
 
-**Verification:**
-- Fast mode (sampling): ~10ms for 1000 triplets
-- Exhaustive mode: O(n³) - ~6 seconds for 100 vertices
+Current: 4 weeks complete, 6-10 weeks remaining
 
 ---
 
-## Debugging Guide
+## Success Metrics
 
-**Print Debug Info:**
-```python
-from graph_generation.verification import GraphVerifier
+Phase 2 success:
+- Benchmark 5 algorithms on 100 graphs in under 1 hour
+- All tours validated as proper Hamiltonian cycles
+- Statistical comparison framework operational
 
-verifier = GraphVerifier(fast_mode=False)
-result = verifier.verify_metricity(matrix)
-print(f"Score: {result.details['metricity_score']}")
-print(f"Violations: {result.details['violations']}")
-print(f"Errors: {result.errors[:5]}")  # First 5 errors
-```
+Phase 3 success:
+- Extract 20-50 interpretable features per vertex
+- Identify 5-10 features with |correlation| > 0.3 to anchor quality
+- Feature extraction for 100-vertex graph in under 10 seconds
 
-**Check if Matrix is Metric:**
-```python
-# All triangle inequalities should pass
-passed_all = result.details['violations'] == 0
-passed_some = result.details['metricity_score'] >= 0.95
-```
+Phase 4 success:
+- Linear regression achieves R² > 0.5 on held-out test set
+- Predicted anchor produces tours within 10-15% of best-anchor
+- Predicted anchor beats random anchor >70% of time
+- Explain top 5 features and why they matter
 
-**Check Euclidean Property:**
-```python
-matrix, coords = generate_euclidean_graph(...)
-result = verifier.verify_euclidean_distances(matrix, coords)
-print(f"Is Euclidean: {result.passed}")
-print(f"Mismatches: {result.details['mismatch_count']}")
-```
+Phase 5 success:
+- Run complete experiment from scratch with single command
+- Results perfectly reproducible from config + seed
+- Experiment on 100 graphs with 5 algorithms in under 1 hour
+
+Phase 6 success:
+- 3-5 statistically-supported research findings
+- Publication-quality figures
+- Clear research narrative
+- Acknowledged limitations
+- Shareable code and data artifacts
+
+---
+
+## Reference Documentation
+
+For detailed implementation guidance, see:
+- `/guides/README.md` - Complete metaprompt collection overview
+- `/guides/01_graph_generation_system.md` - Phase 1 specification
+- `/guides/02_algorithm_benchmarking_pipeline.md` - Phase 2 specification
+- `/guides/03_feature_engineering_system.md` - Phase 3 specification
+- `/guides/04_machine_learning_component.md` - Phase 4 specification
+- `/guides/05_pipeline_integration_workflow.md` - Phase 5 specification
+- `/guides/06_analysis_visualization_insights.md` - Phase 6 specification
+
+Each guide contains 10-12 detailed prompts with success criteria, pitfalls, and next steps.
+
+---
+
+## Questions for New Agents
+
+### Before Starting Work
+1. Which phase am I working on? Have previous phases been completed?
+2. What are the critical principles I must follow?
+3. What quality gates must I meet before completion?
+4. Am I using the right agent (planner vs builder vs validator)?
+
+### During Implementation
+1. Does this follow the architectural principles?
+2. Am I documenting decisions and not just actions?
+3. Have I run the relevant tests?
+4. Is my code interpretable and maintainable?
+
+### Before Marking Complete
+1. Do all tests pass?
+2. Have I updated documentation?
+3. Can someone else reproduce my work?
+4. Have I logged concisely in the appropriate agent directory?
 
 ---
 
 ## Communication Guidelines
 
-**When Creating Issues/TODOs:**
-- Reference the change log: "See docs/10-29-2025_change.md for context"
-- Cite the principle violated: "Violates Critical Principle #2 about quasi-metrics"
-- Link to relevant code: Include file paths and line numbers
+When referencing work:
+- Link to specific files and line numbers
+- Reference architectural principles by number
+- Cite relevant guides: "Per Phase 2 guide, prompt 4..."
+- Document WHY not just WHAT
 
-**When Documenting Changes:**
-- Create new entry in `docs/` with format: `MM-dd-yyyy_change.md`
-- Update this file (CLAUDE.md) with new principles or known issues
-- Add comments to code explaining WHY, not just WHAT
+When creating change logs:
+- Use format: `dd-mm-yyyy_brief_description.md` in `/docs/`
+- Include: what changed, why, impact, testing performed
+- Update CLAUDE.md only if architectural principles change
 
----
-
-## Questions to Ask Yourself
-
-1. **Does this preserve the Euclidean property?**
-   - If working with Euclidean graphs, answer must be YES
-   - If scaling weights, you're doing it WRONG
-
-2. **Does this assume symmetry?**
-   - For asymmetric graphs (quasi-metrics), verify only forward-path constraints
-   - Don't check all six permutations
-
-3. **What's the distribution impact?**
-   - MST strategy creates wide distributions (path sums)
-   - Completion strategy keeps narrow distributions
-   - Choose appropriate strategy for your use case
-
-4. **Have the tests been run?**
-   - All 34 tests should pass
-   - Document why if you intentionally change test expectations
+When coordinating between agents:
+- Planner creates plans, Builder executes, Validator verifies
+- Debugger works from Validator logs + Planner debugging plans
+- Foreman intervenes only for strategic decisions or blockers
 
 ---
 
-## Final Notes
+## Current Priorities (November 2025)
 
-This project has reached a stable state after 10-29-2025 bug fixes. The focus should now be on:
+1. Begin Phase 2: Algorithm Benchmarking
+   - Planner should create detailed implementation plan
+   - Reference `/guides/02_algorithm_benchmarking_pipeline.md`
+   - Focus on unified algorithm interface first
 
-1. **Enhancing the verifier** to properly handle asymmetric graphs
-2. **Expanding generator types** (e.g., geometric layouts, real-world TSP instances)
-3. **Improving visualization** (network plots, heat maps, etc.)
-4. **Scaling to larger graphs** (optimization for n > 1000 vertices)
+2. Maintain Phase 1: Graph Generation
+   - System is stable and production-ready
+   - Minor enhancements only if needed for Phase 2
+   - No breaking changes to existing API
 
-All work should reference the critical principles, particularly around Euclidean property preservation and quasi-metric constraints.
+3. Prepare for Phase 3: Feature Engineering
+   - Research begins once Phase 2 produces benchmark results
+   - Will need graph instances + anchor quality scores as input
 
 ---
 
-**Document Version:** 1.0
-**Last Updated:** 10-29-2025
-**Maintained By:** Claude Code instances
+**Document Version:** 2.0 (Multi-phase architecture)
+**Last Updated:** 11-02-2025
+**Maintained By:** Foreman (orchestrator agent)
+**Project Phase:** 1/6 complete, beginning Phase 2
