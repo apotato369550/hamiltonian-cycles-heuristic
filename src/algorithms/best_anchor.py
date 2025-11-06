@@ -9,7 +9,7 @@ from typing import List
 import time
 from .base import TSPAlgorithm, TourResult, AlgorithmMetadata
 from .registry import register_algorithm
-from .single_anchor import SingleAnchorAlgorithm
+from .single_anchor import SingleAnchorV1Algorithm
 
 
 @register_algorithm(
@@ -34,7 +34,7 @@ class BestAnchorAlgorithm(TSPAlgorithm):
         start_time = time.time()
 
         num_vertices = len(adjacency_matrix)
-        single_anchor_algo = SingleAnchorAlgorithm(random_seed=self.random_seed)
+        single_anchor_algo = SingleAnchorV1Algorithm(random_seed=self.random_seed)
 
         best_tour = None
         best_weight = float('inf')

@@ -25,6 +25,15 @@ from graph_generation import (
     GraphVerifier
 )
 
+# Import algorithms to trigger registration
+from algorithms.registry import AlgorithmRegistry
+import algorithms.nearest_neighbor
+import algorithms.greedy
+import algorithms.exact
+import algorithms.single_anchor
+import algorithms.best_anchor
+import algorithms.multi_anchor
+
 
 def demo_single_graph_generation():
     """Demonstrate generating and working with a single graph."""
@@ -282,10 +291,136 @@ def demo_storage_queries():
         print(f"   - {batch}")
 
 
+def demo_algorithm_benchmarking():
+    """Demonstrate TSP algorithm benchmarking on different graph types."""
+    print("\n" + "=" * 70)
+    print("DEMO 6: Algorithm Benchmarking")
+    print("=" * 70)
+
+    # Generate test graphs with sizes 10, 20, 30
+    print("\n1. Generating test graphs (sizes: 10, 20, 30 vertices)...")
+    graphs = []
+    sizes = [10, 20, 30]
+
+    seed_counter = 500
+    for size in sizes:
+        # Euclidean graph
+        euclidean_matrix, euclidean_coords = generate_euclidean_graph(
+            num_vertices=size,
+            dimensions=2,
+            weight_range=(1.0, 100.0),
+            random_seed=seed_counter
+        )
+        euclidean_graph = create_graph_instance(
+            euclidean_matrix, 'euclidean', {}, seed_counter, euclidean_coords
+        )
+        graphs.append((f'Euclidean-{size}', euclidean_graph))
+        seed_counter += 1
+
+        # Metric graph
+        metric_matrix = generate_metric_graph(
+            num_vertices=size,
+            weight_range=(1.0, 100.0),
+            strategy='mst',
+            random_seed=seed_counter
+        )
+        metric_graph = create_graph_instance(
+            metric_matrix, 'metric', {'strategy': 'mst'}, seed_counter
+        )
+        graphs.append((f'Metric-{size}', metric_graph))
+        seed_counter += 1
+
+        # Random graph
+        random_matrix = generate_random_graph(
+            num_vertices=size,
+            distribution='uniform',
+            random_seed=seed_counter
+        )
+        random_graph = create_graph_instance(
+            random_matrix, 'random', {'distribution': 'uniform'}, seed_counter
+        )
+        graphs.append((f'Random-{size}', random_graph))
+        seed_counter += 1
+
+    print(f"   Generated {len(graphs)} graphs")
+
+    # Get all available algorithms
+    print("\n2. Available algorithms:")
+    all_algos = AlgorithmRegistry.list_algorithms()
+    for algo_name in all_algos:
+        tags = AlgorithmRegistry.get_tags(algo_name)
+        print(f"   - {algo_name:25s} [{', '.join(tags)}]")
+
+    # Benchmark each graph with compatible algorithms
+    print("\n3. Running benchmarks...")
+    print("=" * 90)
+
+    for graph_type, graph in graphs:
+        print(f"\n{graph_type} Graph (n={graph.metadata.size}, metric={graph.properties.is_metric})")
+        print("-" * 90)
+        print(f"{'Algorithm':<25} {'Tour Weight':>12} {'Runtime (s)':>12} {'Success':>10} {'Notes'}")
+        print("-" * 90)
+
+        results = []
+
+        # Run each algorithm
+        for algo_name in all_algos:
+            constraints = AlgorithmRegistry.get_constraints(algo_name)
+            tags = AlgorithmRegistry.get_tags(algo_name)
+
+            # Skip exact algorithms for graphs > 15
+            if 'exact' in tags and graph.metadata.size > 15:
+                print(f"{algo_name:<25} {'N/A':>12} {'N/A':>12} {'SKIP':>10} Exact algo: n > 15")
+                continue
+
+            # Check size constraints
+            max_size = constraints.get('max_size', None)
+            if max_size is not None and graph.metadata.size > max_size:
+                print(f"{algo_name:<25} {'N/A':>12} {'N/A':>12} {'SKIP':>10} Size limit: {max_size}")
+                continue
+
+            # Get algorithm instance
+            try:
+                algo = AlgorithmRegistry.get_algorithm(algo_name, random_seed=42)
+                result = algo.solve(graph.adjacency_matrix)
+
+                if result.success:
+                    results.append((algo_name, result.weight, result.runtime))
+                    notes = ""
+                    if 'anchor_vertex' in result.metadata:
+                        notes = f"anchor={result.metadata['anchor_vertex']}"
+                    elif 'num_anchors' in result.metadata:
+                        notes = f"anchors={result.metadata['num_anchors']}"
+
+                    print(f"{algo_name:<25} {result.weight:12.2f} {result.runtime:12.6f} {'SUCCESS':>10} {notes}")
+                else:
+                    print(f"{algo_name:<25} {'N/A':>12} {result.runtime:12.6f} {'FAILED':>10} {result.error_message[:30]}")
+
+            except Exception as e:
+                print(f"{algo_name:<25} {'N/A':>12} {'N/A':>12} {'ERROR':>10} {str(e)[:30]}")
+
+        # Print summary statistics
+        if results:
+            print("-" * 90)
+            weights = [w for _, w, _ in results]
+            best_weight = min(weights)
+            worst_weight = max(weights)
+            avg_weight = sum(weights) / len(weights)
+
+            print(f"{'Summary:':<25} Best={best_weight:.2f}, Avg={avg_weight:.2f}, Worst={worst_weight:.2f}")
+
+            # Highlight best algorithm
+            best_algo = min(results, key=lambda x: x[1])
+            print(f"{'Best algorithm:':<25} {best_algo[0]} (weight={best_algo[1]:.2f})")
+
+    print("\n" + "=" * 90)
+    print("Benchmark complete!")
+
+
 def main():
     """Run all demonstrations."""
     print("\n" + "=" * 70)
-    print("GRAPH GENERATION SYSTEM - DEMONSTRATION")
+    print("TSP RESEARCH PLATFORM - DEMONSTRATION")
     print("=" * 70)
 
     try:
@@ -304,6 +439,9 @@ def main():
         # Demo 5: Storage queries
         demo_storage_queries()
 
+        # Demo 6: Algorithm benchmarking
+        demo_algorithm_benchmarking()
+
         print("\n" + "=" * 70)
         print("ALL DEMONSTRATIONS COMPLETE")
         print("=" * 70)
@@ -318,4 +456,50 @@ def main():
 
 
 if __name__ == '__main__':
-    sys.exit(main())
+    import argparse
+
+    parser = argparse.ArgumentParser(description='TSP Research Platform Demonstrations')
+    parser.add_argument(
+        '--demo',
+        type=str,
+        choices=['all', '1', '2', '3', '4', '5', '6', 'graph', 'types', 'batch', 'analysis', 'storage', 'benchmark'],
+        default='all',
+        help='Which demo to run (default: all)'
+    )
+
+    args = parser.parse_args()
+
+    # Map demo names to functions
+    demo_map = {
+        '1': ('Single Graph Generation', demo_single_graph_generation),
+        'graph': ('Single Graph Generation', demo_single_graph_generation),
+        '2': ('Multiple Graph Types', demo_multiple_graph_types),
+        'types': ('Multiple Graph Types', demo_multiple_graph_types),
+        '3': ('Batch Generation', demo_batch_generation),
+        'batch': ('Batch Generation', demo_batch_generation),
+        '4': ('Collection Analysis', demo_collection_analysis),
+        'analysis': ('Collection Analysis', demo_collection_analysis),
+        '5': ('Storage Queries', demo_storage_queries),
+        'storage': ('Storage Queries', demo_storage_queries),
+        '6': ('Algorithm Benchmarking', demo_algorithm_benchmarking),
+        'benchmark': ('Algorithm Benchmarking', demo_algorithm_benchmarking),
+    }
+
+    if args.demo == 'all':
+        sys.exit(main())
+    else:
+        demo_name, demo_func = demo_map[args.demo]
+        print("\n" + "=" * 70)
+        print(f"TSP RESEARCH PLATFORM - {demo_name.upper()}")
+        print("=" * 70)
+        try:
+            demo_func()
+            print("\n" + "=" * 70)
+            print(f"{demo_name.upper()} COMPLETE")
+            print("=" * 70)
+            sys.exit(0)
+        except Exception as e:
+            print(f"\n\nError during demonstration: {e}")
+            import traceback
+            traceback.print_exc()
+            sys.exit(1)
