@@ -1,8 +1,8 @@
 # Feature Engineering System (Phase 3)
 
-**Status:** Prompts 1-4 Complete (Base architecture + 3 feature extractors)
-**Last Updated:** 11-07-2025
-**Test Coverage:** 34 tests, all passing
+**Status:** Prompts 1-8 Complete (Base architecture + 6 feature extractors + Analysis tools)
+**Last Updated:** 11-08-2025
+**Test Coverage:** 64 tests, all passing
 
 ---
 
@@ -23,14 +23,21 @@ VertexFeatureExtractor (Abstract Base)
     ├── WeightFeatureExtractor       (Prompt 2)
     ├── TopologicalFeatureExtractor  (Prompt 3)
     ├── MSTFeatureExtractor          (Prompt 4)
-    ├── (Future: NeighborhoodFeatureExtractor)
-    └── (Future: HeuristicFeatureExtractor)
+    ├── NeighborhoodFeatureExtractor (Prompt 5)
+    ├── HeuristicFeatureExtractor    (Prompt 6)
+    └── GraphContextFeatureExtractor (Prompt 7)
 
 FeatureExtractorPipeline
     - Orchestrates multiple extractors
     - Manages shared cache
     - Validates output
     - Combines results
+
+FeatureAnalyzer (Prompt 8)
+    - Feature validation
+    - Correlation analysis
+    - PCA and dimensionality reduction
+    - Distribution analysis
 ```
 
 **Key Principles:**
@@ -41,7 +48,7 @@ FeatureExtractorPipeline
 
 ---
 
-## Implemented Features (Prompts 1-4)
+## Implemented Features (Prompts 1-8)
 
 ### 1. Base Architecture (Prompt 1)
 
@@ -234,6 +241,208 @@ MSTFeatureExtractor(name="mst_based")
 
 ---
 
+### 5. Neighborhood Features (Prompt 5)
+
+**File:** `extractors/neighborhood.py`
+
+**Class:** `NeighborhoodFeatureExtractor`
+
+**Features Extracted (configurable, default ~31 features):**
+
+**K-Nearest Neighbor Features (3 per k value):**
+- knn_{k}_mean: Average distance to k nearest neighbors
+- knn_{k}_var: Variance of k nearest neighbor distances
+- knn_{k}_spread: Difference between k-th and 1st nearest neighbor
+
+Default k values: [1, 2, 3, 5] → 12 k-NN features
+
+**Neighborhood Density Features (4 per percentile):**
+- density_p{N}_count: Number of vertices within radius
+- density_p{N}_total_weight: Total weight within neighborhood
+- density_p{N}_avg_weight: Average weight within neighborhood
+- density_p{N}_proportion: Proportion of vertices in neighborhood
+
+Default percentiles: [25, 50, 75] → 12 density features
+
+**Radial Shell Features (2 per shell):**
+- shell_{i}_count: Number of vertices in shell i
+- shell_{i}_mean_weight: Average distance within shell i
+
+Default shells: 3 → 6 radial features
+
+**Voronoi Features:**
+- voronoi_region_size: Proportion of vertices closest to this vertex
+
+**Purpose:**
+Distinguishes between locally central vs globally central vertices. A vertex can be in dense local neighborhood but peripheral globally.
+
+**Computational Cost:** O(n²) per vertex → O(n³) total
+
+**Constructor:**
+```python
+NeighborhoodFeatureExtractor(
+    k_values=[1, 2, 3, 5],
+    density_percentiles=[25, 50, 75],
+    n_shells=3,
+    name="neighborhood"
+)
+```
+
+---
+
+### 6. Heuristic-Specific Features (Prompt 6)
+
+**File:** `extractors/heuristic.py`
+
+**Class:** `HeuristicFeatureExtractor`
+
+**Features Extracted (8 + 3 + 4 = 15 features by default):**
+
+**Anchor Edge Features (8 features):**
+- anchor_edge_1: Weight of cheapest edge from vertex
+- anchor_edge_2: Weight of 2nd cheapest edge
+- anchor_sum: Sum of two cheapest edges
+- anchor_product: Product of two cheapest edges
+- anchor_ratio: edge2 / edge1
+- anchor_gap_to_third: Difference between 3rd and 2nd cheapest
+  - Large gap = clear anchor choice
+- anchor_quality_score: anchor_sum / avg_edge_weight
+- anchor_relative_gap: gap normalized by edge2
+
+**Tour Estimate Features (3 features, if enabled):**
+- tour_estimate_nn: Greedy nearest neighbor tour cost from vertex
+- tour_estimate_lower_bound: Simple lower bound based on anchor edges
+- tour_estimate_normalized: Estimate / (n × avg_edge_weight)
+
+**Baseline Comparison Features (4 features, if enabled):**
+- baseline_nn_cost: NN tour without anchor constraint
+- baseline_anchor_cost: NN tour forcing anchor edges first
+- baseline_anchor_benefit: nn_cost - anchor_cost (positive = anchor helps)
+- baseline_anchor_ratio: anchor_cost / nn_cost
+
+**Note on "Cheating":**
+These features use fast heuristics to estimate anchor quality, which may seem circular. However, if these estimates are cheaper than exhaustive anchor search, they're still useful for prediction.
+
+**Computational Cost:** O(n²) for greedy NN tours × n vertices = O(n³) total
+
+**Constructor:**
+```python
+HeuristicFeatureExtractor(
+    include_tour_estimates=True,
+    include_baseline_comparison=True,
+    name="heuristic"
+)
+```
+
+---
+
+### 7. Graph Context Features (Prompt 7)
+
+**File:** `extractors/graph_context.py`
+
+**Class:** `GraphContextFeatureExtractor`
+
+**Features Extracted (9 + 3 = 12 features by default):**
+
+**Graph Property Features (9 features, constant per graph):**
+- graph_size: Number of vertices (n)
+- graph_density: Proportion of possible edges present
+  - In complete graphs: 1.0
+  - In sparse graphs: < 1.0
+- graph_metricity_score: % of triplets satisfying triangle inequality
+  - 1.0 = fully metric
+  - < 1.0 = some violations
+- graph_weight_mean: Mean of all edge weights
+- graph_weight_std: Std dev of all edge weights
+- graph_weight_skewness: Distribution asymmetry
+- graph_weight_kurtosis: Distribution tail heaviness
+- graph_diameter: Longest shortest path in graph
+- graph_avg_path_length: Average shortest path length
+
+**Normalized Importance Features (3 features, vary per vertex):**
+- closeness_normalized: Closeness centrality / max closeness in graph
+- degree_normalized: Degree / max degree in graph
+- weight_normalized: Total weight / max total weight in graph
+
+**Purpose:**
+- Graph properties help ML models distinguish different graph types
+- Normalized importance provides relative vertex rankings
+- Enables transfer learning across graphs of different scales
+
+**Implementation Notes:**
+- Metricity sampled (100 triplets) for large graphs (n > 20)
+- Shortest paths computed once and cached
+- All vertices get same graph properties (redundant but useful for ML)
+
+**Computational Cost:**
+- Graph properties: O(n³) for shortest paths
+- Importance metrics: O(n²) using cached paths
+
+**Constructor:**
+```python
+GraphContextFeatureExtractor(
+    include_graph_properties=True,
+    include_normalized_importance=True,
+    name="graph_context"
+)
+```
+
+---
+
+### 8. Feature Analysis Tools (Prompt 8)
+
+**File:** `analysis.py`
+
+**Class:** `FeatureAnalyzer`
+
+Not a feature extractor, but provides tools for analyzing extracted features.
+
+**Validation Methods:**
+- `validate_ranges()`: Check for NaN, Inf, out-of-range values
+- `find_constant_features()`: Identify features with variance < threshold
+
+**Exploratory Analysis:**
+- `compute_correlation_matrix()`: Pearson/Spearman/Kendall correlation
+- `find_highly_correlated_pairs()`: Detect multicollinearity (|r| > threshold)
+- `perform_pca()`: Principal component analysis for dimensionality reduction
+- `analyze_distributions()`: Mean, std, skewness, kurtosis for each feature
+
+**Feature-Target Analysis:**
+- `correlate_with_target()`: Rank features by correlation with anchor quality
+- `get_feature_importance_by_variance()`: Simple variance-based ranking
+
+**Outlier Detection:**
+- `detect_outliers()`: IQR or z-score method
+
+**Reporting:**
+- `summary_report()`: Comprehensive text report with key statistics
+
+**Usage:**
+```python
+from src.features import FeatureAnalyzer
+
+# After extracting features
+analyzer = FeatureAnalyzer(features, feature_names)
+
+# Validation
+validation = analyzer.validate_ranges()
+constant = analyzer.find_constant_features()
+
+# Correlation analysis
+high_corr = analyzer.find_highly_correlated_pairs(threshold=0.95)
+
+# PCA
+pca_results = analyzer.perform_pca(n_components=10)
+
+# Feature-target correlation (when labels available)
+correlations = analyzer.correlate_with_target(anchor_quality_scores)
+
+# Summary report
+print(analyzer.summary_report())
+```
+
+---
+
 ## Usage Examples
 
 ### Basic Usage: Single Extractor
@@ -288,11 +497,13 @@ for graph in graph_collection:
 
 ---
 
-## Test Coverage (34 Tests)
+## Test Coverage (64 Tests)
 
-**Test File:** `src/tests/test_features.py`
+**Test Files:**
+- `src/tests/test_features.py` - Prompts 1-4 (34 tests)
+- `src/tests/test_features_extended.py` - Prompts 5-8 (30 tests)
 
-**Test Categories:**
+**Test Categories (Prompts 1-4):**
 1. Base Architecture (5 tests)
    - Cache helper functionality
    - Pipeline add/remove extractors
@@ -317,6 +528,45 @@ for graph in graph_collection:
    - Leaf/hub indicators
    - Cache usage
    - No NaN values
+
+**Test Categories (Prompts 5-8):**
+5. Neighborhood Features (6 tests)
+   - K-NN feature extraction
+   - Density features
+   - Radial shell features
+   - Voronoi region size
+   - No NaN values
+
+6. Heuristic Features (6 tests)
+   - Anchor edge features
+   - Tour estimates
+   - Baseline comparison
+   - No NaN values
+   - Feature value ranges
+
+7. Graph Context Features (5 tests)
+   - Graph properties extraction
+   - Normalized importance
+   - Metricity score validation
+   - No NaN values
+   - Property value ranges
+
+8. Feature Analyzer (11 tests)
+   - Analyzer initialization
+   - Range validation
+   - Constant feature detection
+   - Correlation matrix computation
+   - Highly correlated pairs
+   - PCA analysis
+   - Feature-target correlation
+   - Distribution analysis
+   - Outlier detection (IQR and z-score)
+   - Feature importance ranking
+   - Summary report generation
+
+9. Extended Pipeline Integration (2 tests)
+   - All extractors in pipeline
+   - Complete feature analysis workflow
 
 5. Feature Validation (4 tests)
    - NaN detection
@@ -343,53 +593,36 @@ python3 -m unittest src.tests.test_features -v
 
 ---
 
-## Future Work (Prompts 5-12)
-
-### Prompt 5: Neighborhood Features (Not Implemented)
-- K-nearest neighbor statistics
-- Neighborhood density
-- Radial features (shells by distance)
-- Voronoi-like partitioning
-
-### Prompt 6: Heuristic-Specific Features (Not Implemented)
-- Two cheapest edge features
-- Gap between 2nd and 3rd cheapest
-- Anchor edge angle (Euclidean graphs)
-- Baseline tour cost estimates
-
-### Prompt 7: Graph-Level Context Features (Not Implemented)
-- Z-score normalization
-- Percentile ranks
-- Graph property features (size, density, metricity)
-- Relative importance features
-
-### Prompt 8: Feature Validation and Analysis (Not Implemented)
-- Correlation matrix computation
-- PCA for dimensionality reduction
-- Feature-target correlation ranking
-- Constant feature detection
+## Future Work (Prompts 9-12)
 
 ### Prompt 9: Anchor Quality Labeling (Not Implemented)
 - Run single-anchor from all vertices
 - Assign quality scores (rank-based, absolute, binary, multi-class)
 - Store labels alongside features
+- Create labeled dataset for ML training
 
 ### Prompt 10: Feature Engineering Pipeline (Not Implemented)
 - End-to-end: graphs → features + labels → ML dataset
 - Progress tracking and caching
 - CSV/DataFrame output
+- Batch processing with resumption
+- Memory-efficient processing for large datasets
 
 ### Prompt 11: Feature Selection (Not Implemented)
-- Univariate selection (correlation, F-test)
+- Univariate selection (correlation, F-test, mutual information)
 - Recursive feature elimination
-- Model-based importance (random forest)
+- Model-based importance (random forest, gradient boosting)
 - L1 regularization (Lasso)
+- Greedy forward selection
+- Feature selection per graph type
 
 ### Prompt 12: Feature Transformation (Not Implemented)
-- Non-linear transforms (log, sqrt, polynomial)
-- Feature interactions (products, ratios)
+- Non-linear transforms (log, sqrt, polynomial, inverse)
+- Feature interactions (products, ratios, differences)
 - Standardization (z-score, min-max, robust)
 - Domain-specific combinations
+- Handling of skewed distributions
+- Feature engineering based on domain knowledge
 
 ---
 
@@ -564,12 +797,20 @@ python3 -m unittest src.tests.test_features -v
 - 34 tests, all passing
 - Handles edge cases: single vertex, uniform weights, asymmetric graphs
 
-**Next Version (Prompts 5-12):**
-- Neighborhood, heuristic, graph-level features
-- Feature validation and analysis tools
+**v2.0 - 11-08-2025 (Prompts 5-8 Complete)**
+- NeighborhoodFeatureExtractor: ~31 features (k-NN, density, radial, Voronoi)
+- HeuristicFeatureExtractor: 15 features (anchor edges, tour estimates, baselines)
+- GraphContextFeatureExtractor: 12 features (graph properties, normalized importance)
+- FeatureAnalyzer: Full analysis toolkit (validation, correlation, PCA, distribution analysis)
+- 64 tests total (34 original + 30 new), all passing
+- Comprehensive documentation for all extractors
+- Production-ready feature extraction system
+
+**Next Version (Prompts 9-12):**
 - Anchor quality labeling system
-- End-to-end pipeline
-- Feature selection and transformation
+- End-to-end pipeline (graphs → labeled dataset)
+- Feature selection utilities
+- Feature transformation tools
 
 ---
 
