@@ -199,6 +199,11 @@ class FeatureTransformer:
         values = values.copy()
 
         if handle_zeros == 'offset':
+            # Shift values to be positive, then add small offset to avoid log(0)
+            min_val = np.min(values)
+            if min_val <= 0:
+                # Shift all values to be positive
+                values = values - min_val + 1.0
             # Add small offset to avoid log(0)
             min_positive = np.min(values[values > 0]) if np.any(values > 0) else 1.0
             offset = min_positive * 0.01
