@@ -61,9 +61,9 @@ Remaining (Steps 5-8):
 
 Key files:
 - `src/algorithms/` - Complete algorithm benchmarking package
-- `src/tests/test_algorithms.py` - Core interface tests (59 tests)
-- `src/tests/test_baseline_algorithms.py` - Baseline algorithm tests (16 tests)
-- `src/tests/test_anchor_algorithms.py` - Anchor algorithm tests (14 tests)
+- `src/algorithms/__init__.py` - **Auto-registers all algorithms** (updated 11-13-2025)
+- `src/algorithms/single_anchor.py` - Contains v1 (single direction) and v2 (bidirectional)
+- `src/tests/test_phase2_algorithms.py` - All Phase 2 tests (89 tests, consolidated 11-13-2025)
 - `PHASE2_COMPLETE.md` - Detailed implementation summary
 
 ### Phase 3: Feature Engineering (COMPLETE)
@@ -101,9 +101,7 @@ Key files:
 - `src/features/dataset_pipeline.py` - End-to-end dataset generation (Prompt 10)
 - `src/features/selection.py` - Feature selection utilities (Prompt 11)
 - `src/features/transformation.py` - Feature transformation tools (Prompt 12)
-- `src/tests/test_features.py` - Prompts 1-4 tests (34 tests)
-- `src/tests/test_features_extended.py` - Prompts 5-8 tests (30 tests)
-- `src/tests/test_features_final.py` - Prompts 9-12 comprehensive tests
+- `src/tests/test_phase3_features.py` - All Phase 3 tests (111 tests, consolidated 11-13-2025)
 - `src/tests/test_phase3_integration.py` - Integration test (prompts 1-9, no ML dependencies)
 - `src/features/CLAUDE.md` - Detailed implementation documentation
 
@@ -364,7 +362,8 @@ Critical design decisions:
 
 ## Test Suite Status
 
-All 187 tests passing (validated 11-10-2025).
+All 234+ tests passing (validated 11-13-2025).
+**Updated 11-13-2025:** Tests consolidated to one file per phase for better maintainability.
 
 Phase 1 - Graph Generation (34 tests):
 - 10 Euclidean generator tests
@@ -376,38 +375,26 @@ Phase 1 - Graph Generation (34 tests):
 - 3 Performance benchmarks
 
 Phase 2 - Algorithm Benchmarking (89 tests):
-- 59 core interface and validation tests (test_algorithms.py)
-- 16 baseline algorithm tests (test_baseline_algorithms.py)
-- 14 anchor algorithm tests (test_anchor_algorithms.py)
+- **test_phase2_algorithms.py** (consolidated 11-13-2025)
+- 59 core interface and validation tests
+- 16 baseline algorithm tests
+- 14 anchor algorithm tests (includes single_anchor v1 and v2)
 
-Phase 3 - Feature Engineering (64 tests + integration):
-- Prompts 1-4 (test_features.py - 34 tests):
-  - 5 base architecture tests
-  - 7 weight-based feature tests
-  - 7 topological feature tests
-  - 6 MST-based feature tests
-  - 4 validation tests
-  - 4 pipeline integration tests
-  - 3 edge case tests
-- Prompts 5-8 (test_features_extended.py - 30 tests):
-  - 6 neighborhood feature tests
-  - 6 heuristic feature tests
-  - 5 graph context feature tests
-  - 11 feature analyzer tests
-  - 2 extended integration tests
-- Prompts 9-12 (test_features_final.py):
-  - Comprehensive tests for labeling, dataset pipeline, selection, transformation
-  - Requires pandas and scikit-learn (optional dependencies)
-- Integration test (src/tests/test_phase3_integration.py):
-  - Validates prompts 1-9 without ML dependencies
+Phase 3 - Feature Engineering (111 tests + integration):
+- **test_phase3_features.py** (consolidated 11-13-2025)
+- Prompts 1-4: Base architecture, weight, topological, MST features (34 tests)
+- Prompts 5-8: Neighborhood, heuristic, graph context, analyzer (30 tests)
+- Prompts 9-12: Labeling, dataset pipeline, selection, transformation (47 tests)
+  - Requires pandas and scikit-learn for prompts 10-12
+- **test_phase3_integration.py**: Quick smoke test (no ML dependencies)
+  - Validates prompts 1-9 without pandas/sklearn
   - Tests feature extraction (93 features) and labeling system (4 strategies)
 
 Run all tests: `python3 -m unittest discover -s src/tests -p "test_*.py" -v`
 Run Phase 1 only: `python3 src/tests/test_graph_generators.py`
-Run Phase 2 only: `python3 src/tests/test_algorithms.py`
-Run Phase 3 basic: `python3 -m unittest src.tests.test_features src.tests.test_features_extended`
+Run Phase 2 only: `python3 src/tests/test_phase2_algorithms.py`
+Run Phase 3 only: `python3 src/tests/test_phase3_features.py`
 Run Phase 3 integration: `python3 src/tests/test_phase3_integration.py`
-Run Phase 3 full (requires pandas/sklearn): `python3 -m unittest src.tests.test_features_final`
 
 ---
 
@@ -585,7 +572,13 @@ When coordinating between agents:
 
 ---
 
-**Document Version:** 4.0 (Phase 3 complete - all 12 prompts)
-**Last Updated:** 11-10-2025
+**Document Version:** 4.1 (Test consolidation + algorithm auto-registration)
+**Last Updated:** 11-13-2025
 **Maintained By:** Foreman (orchestrator agent)
 **Project Phase:** Phase 1 complete, Phase 2 50% complete (4/8 steps), Phase 3 complete
+
+**Recent Changes (11-13-2025)**:
+- Algorithm auto-registration in `src/algorithms/__init__.py`
+- Test consolidation: One file per phase for better maintainability
+- Fixed algorithm registration bug preventing labeling tests from running
+- Clarified single_anchor v1 (single direction) vs v2 (bidirectional)

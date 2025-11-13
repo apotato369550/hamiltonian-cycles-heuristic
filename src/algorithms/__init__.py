@@ -31,6 +31,15 @@ Main components:
 from .base import TourResult, AlgorithmMetadata, TSPAlgorithm
 from .registry import AlgorithmRegistry, register_algorithm
 
+# Import algorithm implementations to trigger @register_algorithm decorators
+# This ensures algorithms are registered when the package is imported
+from . import nearest_neighbor
+from . import greedy
+from . import exact
+from . import single_anchor
+from . import best_anchor
+from . import multi_anchor
+
 __version__ = "1.0.0"
 
 __all__ = [

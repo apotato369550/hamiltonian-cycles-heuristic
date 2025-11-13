@@ -13,7 +13,7 @@ Core algorithm benchmarking infrastructure for TSP research platform. Implements
 ```
 algorithms/
 ├── CLAUDE.md                    # This file - package documentation
-├── __init__.py                  # Package initialization, exports
+├── __init__.py                  # Package initialization, exports, auto-registration
 ├── base.py                      # Core interfaces and data structures
 ├── registry.py                  # Algorithm registration system
 ├── validation.py                # Tour validation functions
@@ -21,7 +21,7 @@ algorithms/
 ├── nearest_neighbor.py          # NN baseline (2 variants)
 ├── greedy.py                    # Greedy edge-picking baseline
 ├── exact.py                     # Held-Karp exact solver
-├── single_anchor.py             # Single anchor heuristic
+├── single_anchor.py             # Single anchor heuristic (v1 and v2)
 ├── best_anchor.py               # Best anchor search
 └── multi_anchor.py              # Multi-anchor heuristics (2 variants)
 ```
@@ -54,6 +54,7 @@ algorithms/
 - Filtering by: tags, graph type, graph size
 - Automatic instantiation with random seed support
 - Type-safe: Validates TSPAlgorithm subclasses at registration
+- **Auto-registration**: All algorithms registered when package imported
 
 **Usage**:
 ```python
@@ -61,11 +62,15 @@ algorithms/
 class MyAlgorithm(TSPAlgorithm):
     ...
 
+# Algorithms are automatically registered via __init__.py
+import src.algorithms  # Triggers registration
 algo = AlgorithmRegistry.get_algorithm("my_algo", random_seed=42)
 result = algo.solve(adjacency_matrix)
 ```
 
 **Lines**: 216
+
+**Important**: As of 11-13-2025, algorithms are automatically registered when the `algorithms` package is imported. The `__init__.py` file imports all algorithm modules, ensuring `@register_algorithm` decorators execute at import time.
 
 ### 3. Tour Validation (validation.py)
 **Purpose**: Comprehensive validation of Hamiltonian cycles
@@ -141,10 +146,14 @@ result = algo.solve(adjacency_matrix)
 #### 4. Single Anchor (single_anchor.py)
 **Strategy**: Pre-commit two cheapest edges from anchor vertex, build greedily
 
-**Complexity**: O(n²)
+**Variants**:
+- `single_anchor_v1`: Single direction (entrance → exit)
+- `single_anchor_v2`: Bidirectional (tries both directions, returns best)
+
+**Complexity**: O(n²) for v1, O(2n²) for v2
 **Parameters**: `anchor_vertex` (which vertex to use)
 **Metadata**: Tracks anchor vertex, neighbors, edge weights
-**Tags**: `["anchor", "heuristic"]`
+**Tags**: `["anchor", "heuristic"]` for v1, `["anchor", "heuristic", "bidirectional"]` for v2
 
 #### 5. Best Anchor (best_anchor.py)
 **Strategy**: Try single anchor from each vertex, return best
@@ -171,9 +180,9 @@ result = algo.solve(adjacency_matrix)
 ### Basic Usage
 ```python
 from algorithms.registry import AlgorithmRegistry
-import algorithms.nearest_neighbor  # Trigger registration
+import src.algorithms  # Auto-registers all algorithms
 
-# Get algorithm
+# Get algorithm (no manual import needed)
 nn = AlgorithmRegistry.get_algorithm("nearest_neighbor_best", random_seed=42)
 
 # Create adjacency matrix
@@ -223,18 +232,22 @@ small_graph_algos = AlgorithmRegistry.list_algorithms(graph_size=10)
 ## Testing
 
 ### Test Files
-- `../tests/test_algorithms.py` (59 tests) - Core interfaces, validation, metrics
-- `../tests/test_baseline_algorithms.py` (16 tests) - Baseline algorithm correctness
-- `../tests/test_anchor_algorithms.py` (14 tests) - Anchor algorithm correctness
+- `../tests/test_phase2_algorithms.py` (89 tests) - All Phase 2 tests consolidated
+
+**Test Organization** (updated 11-13-2025):
+- Core interface tests (59 tests) - TourResult, registry, validation, metrics
+- Baseline algorithm tests (16 tests) - Nearest Neighbor, Greedy, Held-Karp
+- Anchor algorithm tests (14 tests) - Single Anchor (v1/v2), Best Anchor, Multi-Anchor
 
 ### Run Tests
 ```bash
-# All Phase 2 tests
-python3 src/tests/test_algorithms.py
-python3 src/tests/test_baseline_algorithms.py
-python3 src/tests/test_anchor_algorithms.py
+# All Phase 2 tests (consolidated file)
+python3 src/tests/test_phase2_algorithms.py
 
-# Or all at once
+# Or via unittest
+python3 -m unittest src.tests.test_phase2_algorithms -v
+
+# All tests (all phases)
 python3 -m unittest discover -s src/tests -p "test_*.py"
 ```
 
@@ -304,8 +317,8 @@ python3 -m unittest discover -s src/tests -p "test_*.py"
 2. Subclass `TSPAlgorithm`
 3. Implement `solve()` and `get_metadata()`
 4. Use `@register_algorithm` decorator
-5. Import in `__init__.py`
-6. Add tests to `../tests/`
+5. **Import in `__init__.py`** (critical for auto-registration)
+6. Add tests to `../tests/test_phase2_algorithms.py`
 
 Example:
 ```python
@@ -358,7 +371,11 @@ class MyAlgorithm(TSPAlgorithm):
 
 ---
 
-**Package Version**: 1.0.0
-**Last Updated**: 11-05-2025
+**Package Version**: 1.1.0
+**Last Updated**: 11-13-2025
 **Status**: Production Ready (Steps 1-4 complete, validated)
 **Maintainers**: Builder (implementation), Validator (verification)
+
+**Changelog**:
+- v1.1.0 (11-13-2025): Auto-registration in __init__.py, test consolidation, single_anchor v1/v2 clarification
+- v1.0.0 (11-05-2025): Initial release with all Phase 2 Steps 1-4 algorithms
