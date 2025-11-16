@@ -22,10 +22,38 @@ Note: Prompts 10-12 require pandas and scikit-learn
 
 
 import unittest
+import sys
 import numpy as np
-from src.features.base import VertexFeatureExtractor, FeatureValidationError, CachedComputation
-from src.features.pipeline import FeatureExtractorPipeline
-from src.features.extractors import WeightFeatureExtractor, TopologicalFeatureExtractor, MSTFeatureExtractor
+from pathlib import Path
+
+# Add parent directory to path
+sys.path.insert(0, str(Path(__file__).parent.parent))
+
+from features.base import VertexFeatureExtractor, FeatureValidationError, CachedComputation
+from features.pipeline import FeatureExtractorPipeline
+from features.extractors import (
+    WeightFeatureExtractor,
+    TopologicalFeatureExtractor,
+    MSTFeatureExtractor,
+    NeighborhoodFeatureExtractor,
+    HeuristicFeatureExtractor,
+    GraphContextFeatureExtractor
+)
+from features.analysis import FeatureAnalyzer
+from features.labeling import AnchorQualityLabeler, LabelingStrategy, LabelingResult
+
+# Optional imports for prompts 10-12
+try:
+    import pandas as pd
+    import tempfile
+    import shutil
+    import os
+    from features.dataset_pipeline import FeatureDatasetPipeline, DatasetConfig
+    from features.selection import FeatureSelector, SelectionMethod
+    from features.transformation import FeatureTransformer, TransformationConfig, TransformationType
+    HAS_ML_DEPENDENCIES = True
+except ImportError:
+    HAS_ML_DEPENDENCIES = False
 
 
 class TestBaseArchitecture(unittest.TestCase):
@@ -906,7 +934,7 @@ class TestAnchorQualityLabeling(unittest.TestCase):
             algorithm_name='single_anchor_v1'
         )
         self.assertEqual(labeler.strategy, LabelingStrategy.RANK_BASED)
-        self.assertEqual(labeler.algorithm_name, 'single_anchor')
+        self.assertEqual(labeler.algorithm_name, 'single_anchor_v1')
 
     def test_absolute_quality_labeling(self):
         """Test absolute quality labeling strategy."""

@@ -20,8 +20,12 @@ import numpy as np
 import time
 
 # Import Phase 2 algorithm infrastructure
-from src.algorithms.registry import AlgorithmRegistry
-from src.algorithms.base import TourResult
+import sys
+from pathlib import Path
+sys.path.insert(0, str(Path(__file__).parent.parent))
+
+from algorithms.registry import AlgorithmRegistry
+from algorithms.base import TourResult
 
 
 class LabelingStrategy(Enum):
@@ -285,7 +289,8 @@ class AnchorQualityLabeler:
             percentiles = np.array([100.0])
         else:
             # Invert ranks so best gets highest percentile
-            percentiles = 100.0 * (len(ranks) - ranks + 1) / len(ranks)
+            # Standard percentile formula: 100 * (n - r) / (n - 1)
+            percentiles = 100.0 * (len(ranks) - ranks) / (len(ranks) - 1)
 
         # Assign percentiles to successful vertices
         for i, v in enumerate(successful_vertices):
@@ -313,18 +318,17 @@ class AnchorQualityLabeler:
         if len(successful_vertices) == 0:
             return labels
 
-        # Compute threshold for top k%
+        # Compute how many vertices should be positive
         weights = tour_weights[successful_vertices]
         k_count = max(1, int(np.ceil(len(weights) * self.top_k_percent / 100.0)))
 
-        # Find k-th smallest weight (threshold)
-        sorted_weights = np.sort(weights)
-        threshold = sorted_weights[k_count - 1]
+        # Sort successful vertices by their tour weights (ascending - best first)
+        sorted_indices = np.argsort(weights)
+        top_k_vertices = successful_vertices[sorted_indices[:k_count]]
 
-        # Assign positive label to vertices with weight <= threshold
-        for v in successful_vertices:
-            if tour_weights[v] <= threshold:
-                labels[v] = 1.0
+        # Assign positive label to top k vertices
+        for v in top_k_vertices:
+            labels[v] = 1.0
 
         return labels
 
@@ -361,7 +365,8 @@ class AnchorQualityLabeler:
         if len(ranks) == 1:
             percentiles = np.array([100.0])
         else:
-            percentiles = 100.0 * (len(ranks) - ranks + 1) / len(ranks)
+            # Standard percentile formula: 100 * (n - r) / (n - 1)
+            percentiles = 100.0 * (len(ranks) - ranks) / (len(ranks) - 1)
 
         # Assign classes based on percentile thresholds
         for i, v in enumerate(successful_vertices):

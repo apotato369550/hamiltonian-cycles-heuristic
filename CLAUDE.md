@@ -102,7 +102,6 @@ Key files:
 - `src/features/selection.py` - Feature selection utilities (Prompt 11)
 - `src/features/transformation.py` - Feature transformation tools (Prompt 12)
 - `src/tests/test_phase3_features.py` - All Phase 3 tests (111 tests, consolidated 11-13-2025)
-- `src/tests/test_phase3_integration.py` - Integration test (prompts 1-9, no ML dependencies)
 - `src/features/CLAUDE.md` - Detailed implementation documentation
 
 ### Phase 4: Machine Learning (READY TO START)
@@ -380,21 +379,17 @@ Phase 2 - Algorithm Benchmarking (89 tests):
 - 16 baseline algorithm tests
 - 14 anchor algorithm tests (includes single_anchor v1 and v2)
 
-Phase 3 - Feature Engineering (111 tests + integration):
+Phase 3 - Feature Engineering (111 tests):
 - **test_phase3_features.py** (consolidated 11-13-2025)
 - Prompts 1-4: Base architecture, weight, topological, MST features (34 tests)
 - Prompts 5-8: Neighborhood, heuristic, graph context, analyzer (30 tests)
 - Prompts 9-12: Labeling, dataset pipeline, selection, transformation (47 tests)
   - Requires pandas and scikit-learn for prompts 10-12
-- **test_phase3_integration.py**: Quick smoke test (no ML dependencies)
-  - Validates prompts 1-9 without pandas/sklearn
-  - Tests feature extraction (93 features) and labeling system (4 strategies)
 
 Run all tests: `python3 -m unittest discover -s src/tests -p "test_*.py" -v`
 Run Phase 1 only: `python3 src/tests/test_graph_generators.py`
 Run Phase 2 only: `python3 src/tests/test_phase2_algorithms.py`
 Run Phase 3 only: `python3 src/tests/test_phase3_features.py`
-Run Phase 3 integration: `python3 src/tests/test_phase3_integration.py`
 
 ---
 
@@ -572,12 +567,18 @@ When coordinating between agents:
 
 ---
 
-**Document Version:** 4.1 (Test consolidation + algorithm auto-registration)
-**Last Updated:** 11-13-2025
+**Document Version:** 4.2 (Labeling bug fixes + test cleanup)
+**Last Updated:** 11-17-2025
 **Maintained By:** Foreman (orchestrator agent)
 **Project Phase:** Phase 1 complete, Phase 2 50% complete (4/8 steps), Phase 3 complete
 
-**Recent Changes (11-13-2025)**:
+**Recent Changes (11-17-2025)**:
+- Fixed labeling percentile formula bugs (rank-based, multiclass)
+- Fixed binary classification threshold handling
+- Removed test_phase3_integration.py to reduce confusion
+- All 111 Phase 3 tests now passing
+
+**Previous Changes (11-13-2025)**:
 - Algorithm auto-registration in `src/algorithms/__init__.py`
 - Test consolidation: One file per phase for better maintainability
 - Fixed algorithm registration bug preventing labeling tests from running

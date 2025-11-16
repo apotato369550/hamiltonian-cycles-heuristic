@@ -4,23 +4,22 @@
 Comprehensive test coverage for TSP research platform. Validates correctness, performance, and edge cases across all phases.
 
 **Total Tests**: 234+
-**Pass Rate**: 100% (validated 11-13-2025)
-**Organization**: One consolidated file per phase + integration tests
+**Pass Rate**: 100% (validated 11-17-2025)
+**Organization**: One consolidated file per phase for better maintainability
 
 ---
 
 ## Test Organization
 
-**Updated 11-13-2025:** Tests consolidated to one file per phase for better maintainability.
+**Updated 11-17-2025:** Tests consolidated to one file per phase. Integration test removed to reduce confusion.
 
 ```
 tests/
 ├── CLAUDE.md                         # This file
 ├── __init__.py                       # Test package init
 ├── test_graph_generators.py          # Phase 1 (34 tests) ✅ No changes
-├── test_phase2_algorithms.py         # Phase 2 (89 tests) ⭐ NEW - Consolidated
-├── test_phase3_features.py           # Phase 3 (111 tests) ⭐ NEW - Consolidated
-└── test_phase3_integration.py        # Phase 3 integration (quick smoke test)
+├── test_phase2_algorithms.py         # Phase 2 (89 tests) ⭐ Consolidated
+└── test_phase3_features.py           # Phase 3 (111 tests) ⭐ Consolidated
 ```
 
 **Legacy files removed** (11-13-2025):
@@ -30,6 +29,7 @@ tests/
 - ~~test_features.py~~ → Merged into test_phase3_features.py
 - ~~test_features_extended.py~~ → Merged into test_phase3_features.py
 - ~~test_features_final.py~~ → Merged into test_phase3_features.py
+- ~~test_phase3_integration.py~~ → Removed (11-17-2025) to reduce confusion
 
 ---
 
@@ -125,17 +125,17 @@ python3 src/tests/test_phase2_algorithms.py
 python3 -m unittest src.tests.test_phase2_algorithms -v
 ```
 
-### Phase 3 Only (Updated 11-13-2025)
+### Phase 3 Only (Updated 11-17-2025)
 ```bash
 # Consolidated file (111 tests, requires pandas/sklearn)
 python3 src/tests/test_phase3_features.py
 
 # Or via unittest
 python3 -m unittest src.tests.test_phase3_features -v
-
-# Integration test (quick smoke test, no ML dependencies)
-python3 src/tests/test_phase3_integration.py
 ```
+
+**Note:** Phase 3 tests require pandas and scikit-learn for full coverage (Prompts 10-12).
+Install with: `pip install pandas scikit-learn`
 
 ### Single Test Class
 ```bash
@@ -208,9 +208,8 @@ python3 -m unittest src.tests.test_phase3_features.TestWeightFeatureExtractor -v
 - ✓ Edge cases (single vertex, uniform weights)
 
 **Dependencies**:
-- Prompts 1-9: No dependencies required
-- Prompts 10-12: Requires `pandas` and `scikit-learn`
-- Alternative: `test_phase3_integration.py` for quick validation without ML dependencies
+- Prompts 1-9: Core dependencies only (numpy, scipy)
+- Prompts 10-12: Requires `pandas` and `scikit-learn` for full testing
 
 ### Phase 4 (Machine Learning)
 - Model training tests
@@ -228,12 +227,13 @@ python3 -m unittest src.tests.test_phase3_features.TestWeightFeatureExtractor -v
 
 ---
 
-**Test Suite Version**: 4.0 (Consolidated test organization)
-**Last Updated**: 11-13-2025
+**Test Suite Version**: 4.1 (Integration test removed)
+**Last Updated**: 11-17-2025
 **Status**: All tests passing (234+/234+)
 **Note**: Phase 3 Prompts 10-12 require pandas/scikit-learn (optional)
 
 **Changelog**:
+- v4.1 (11-17-2025): Removed test_phase3_integration.py to reduce confusion, labeling bug fixes
 - v4.0 (11-13-2025): Consolidated tests to one file per phase, algorithm auto-registration fix
 - v3.0 (11-10-2025): Added Phase 3 Prompts 1-8 tests
 - v2.0 (11-05-2025): Added Phase 2 tests
