@@ -9,9 +9,29 @@ Comprehensive test coverage for TSP research platform. Validates correctness, pe
 
 ---
 
+## **IMPORTANT: Keeping Tests Current**
+
+**⚠️ CRITICAL REMINDER:** Whenever you work on a new phase or perform a significant refactor, you MUST:
+
+1. **Create or update test scripts** for the modified/new code
+2. **Run all existing tests** to ensure no regressions
+3. **Update this CLAUDE.md** to document the new tests
+4. **Consolidate tests** into one file per phase (don't scatter tests across multiple files)
+5. **Remove obsolete tests** that no longer apply
+
+**Test-Driven Development:**
+- Write tests BEFORE or DURING implementation, not after
+- Each new feature should have corresponding tests
+- Aim for high coverage of edge cases and error conditions
+- Document any known limitations or untested scenarios
+
+**Quality Gate:** All tests must pass before marking a phase as complete.
+
+---
+
 ## Test Organization
 
-**Updated 11-17-2025:** Tests consolidated to one file per phase. Integration test removed to reduce confusion.
+**Updated 11-17-2025:** Tests consolidated to one file per phase. Phase 4 tests added.
 
 ```
 tests/
@@ -19,7 +39,8 @@ tests/
 ├── __init__.py                       # Test package init
 ├── test_graph_generators.py          # Phase 1 (34 tests) ✅ No changes
 ├── test_phase2_algorithms.py         # Phase 2 (89 tests) ⭐ Consolidated
-└── test_phase3_features.py           # Phase 3 (111 tests) ⭐ Consolidated
+├── test_phase3_features.py           # Phase 3 (111 tests) ⭐ Consolidated
+└── test_phase4_ml.py                 # Phase 4 (NEW) ⭐ Prompts 1-4
 ```
 
 **Legacy files removed** (11-13-2025):
@@ -137,6 +158,18 @@ python3 -m unittest src.tests.test_phase3_features -v
 **Note:** Phase 3 tests require pandas and scikit-learn for full coverage (Prompts 10-12).
 Install with: `pip install pandas scikit-learn`
 
+### Phase 4 Only (NEW - 11-17-2025)
+```bash
+# Requires pandas and scikit-learn
+python3 src/tests/test_phase4_ml.py
+
+# Or via unittest
+python3 -m unittest src.tests.test_phase4_ml -v
+```
+
+**Note:** Phase 4 tests require pandas and scikit-learn.
+Install with: `pip install pandas scikit-learn`
+
 ### Single Test Class
 ```bash
 # Example: Test algorithm registry
@@ -144,6 +177,9 @@ python3 -m unittest src.tests.test_phase2_algorithms.TestAlgorithmRegistry -v
 
 # Example: Test weight features
 python3 -m unittest src.tests.test_phase3_features.TestWeightFeatureExtractor -v
+
+# Example: Test linear regression
+python3 -m unittest src.tests.test_phase4_ml.TestLinearRegressionModel -v
 ```
 
 ---
@@ -211,10 +247,74 @@ python3 -m unittest src.tests.test_phase3_features.TestWeightFeatureExtractor -v
 - Prompts 1-9: Core dependencies only (numpy, scipy)
 - Prompts 10-12: Requires `pandas` and `scikit-learn` for full testing
 
-### Phase 4 (Machine Learning)
-- Model training tests
-- Cross-validation tests
-- Prediction accuracy tests
+---
+
+## Phase 4: Machine Learning Tests (Prompts 1-4)
+
+**File**: `test_phase4_ml.py` (NEW - Added 11-17-2025)
+
+**Status**: Prompts 1-4 implemented and tested
+
+### Test Classes (5 classes, comprehensive coverage)
+
+**Dataset Preparation Tests** (`TestDatasetPreparator` - 7 tests):
+- Preparator initialization
+- Missing value handling (mean/median imputation, removal)
+- Constant feature removal
+- Outlier handling (clipping, removal)
+- Metadata extraction
+
+**Train/Test Splitting Tests** (`TestTrainTestSplitter` - 6 tests):
+- Random split (baseline)
+- Graph-based split (no graph in multiple sets)
+- Stratified graph split (balanced by graph type)
+- Graph-type holdout (train on some types, test on others)
+- Size-based holdout (train on small, test on large)
+- Split summary generation
+
+**Linear Regression Tests** (`TestLinearRegressionModel` - 9 tests):
+- OLS fitting and prediction
+- Ridge regression (L2 regularization)
+- Lasso regression (L1 regularization)
+- ElasticNet (L1 + L2 regularization)
+- Coefficient extraction
+- Feature importance extraction
+- Model evaluation (R², MAE, RMSE)
+- Diagnostic information (residuals)
+- Error handling (predict before fit)
+
+**Tree Model Tests** (`TestTreeBasedModel` - 5 tests):
+- Decision tree fitting and prediction
+- Random forest ensemble
+- Gradient boosting
+- Feature importance extraction
+- Non-linearity handling (vs linear models)
+
+**Integration Tests** (`TestModelIntegration` - 1 test):
+- Complete pipeline: data prep → split → train → evaluate
+- Tests both linear and tree models
+- Validates end-to-end workflow
+
+**Total Phase 4 Tests**: 28 tests (Prompts 1-4 only)
+
+**Key Coverage**:
+- ✓ Dataset preparation (missing values, outliers, constant features)
+- ✓ 5 splitting strategies (random, graph-based, stratified, holdout x2)
+- ✓ 4 linear models (OLS, Ridge, Lasso, ElasticNet)
+- ✓ 3 tree models (Decision Tree, Random Forest, Gradient Boosting)
+- ✓ Model evaluation metrics (R², MAE, RMSE)
+- ✓ Feature importance extraction
+- ✓ End-to-end integration
+
+**Dependencies**:
+- Requires: pandas, scikit-learn
+- Install with: `pip install pandas scikit-learn`
+
+**Future Prompts** (Not yet implemented):
+- Prompt 5: Model Evaluation and Comparison
+- Prompt 6: Cross-Validation Strategy
+- Prompt 7: Hyperparameter Tuning
+- Prompt 8-12: Feature Engineering, Interpretation, Pipeline, Generalization, Online Learning
 
 ---
 
@@ -223,18 +323,21 @@ python3 -m unittest src.tests.test_phase3_features.TestWeightFeatureExtractor -v
 - **Root Context**: `/CLAUDE.md`
 - **Phase 1 Tests**: Validate graph generation (34 tests)
 - **Phase 2 Tests**: Validate algorithms (89 tests)
-- **Phase 3 Tests**: Validate feature engineering (64 tests)
+- **Phase 3 Tests**: Validate feature engineering (111 tests)
+- **Phase 4 Tests**: Validate ML models (28 tests for Prompts 1-4)
 
 ---
 
-**Test Suite Version**: 4.1 (Integration test removed)
+**Test Suite Version**: 5.0 (Phase 4 Prompts 1-4 added)
 **Last Updated**: 11-17-2025
-**Status**: All tests passing (234+/234+)
-**Note**: Phase 3 Prompts 10-12 require pandas/scikit-learn (optional)
+**Status**: All tests passing (262+/262+)
+**Note**: Phase 3 and Phase 4 require pandas/scikit-learn
 
 **Changelog**:
+- v5.0 (11-17-2025): Added Phase 4 Prompts 1-4 tests (28 tests), added test maintenance reminder
 - v4.1 (11-17-2025): Removed test_phase3_integration.py to reduce confusion, labeling bug fixes
 - v4.0 (11-13-2025): Consolidated tests to one file per phase, algorithm auto-registration fix
 - v3.0 (11-10-2025): Added Phase 3 Prompts 1-8 tests
 - v2.0 (11-05-2025): Added Phase 2 tests
+- v1.0 (10-29-2025): Initial Phase 1 tests
 - v1.0 (10-29-2025): Initial Phase 1 tests
