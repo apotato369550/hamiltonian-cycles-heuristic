@@ -34,6 +34,36 @@ from ml.models import (
     ModelResult
 )
 
+from ml.evaluation import (
+    ModelEvaluator,
+    ModelComparator,
+    PerformanceMatrix,
+    PerformanceMetrics
+)
+
+from ml.cross_validation import (
+    CrossValidator,
+    NestedCrossValidator,
+    CVStrategy,
+    CVResult
+)
+
+from ml.tuning import (
+    HyperparameterTuner,
+    ModelSpecificTuner,
+    TuningStrategy
+)
+
+from ml.feature_engineering import (
+    FeatureScaler,
+    NonLinearTransformer,
+    FeatureInteractionGenerator,
+    PCAReducer,
+    AdvancedFeatureSelector,
+    ScalingStrategy,
+    TransformationType
+)
+
 
 class TestDatasetPreparator(unittest.TestCase):
     """Test dataset preparation functionality (Prompt 1)."""
@@ -639,6 +669,559 @@ class TestModelIntegration(unittest.TestCase):
         # Both models should extract feature importance
         self.assertIsNotNone(linear_result.feature_importance)
         self.assertIsNotNone(tree_result.feature_importance)
+
+
+class TestModelEvaluator(unittest.TestCase):
+    """Test model evaluation framework (Prompt 5)."""
+
+    def setUp(self):
+        """Create test data."""
+        np.random.seed(42)
+        self.n = 100
+
+        self.y_true = np.random.randn(self.n)
+        self.y_pred = self.y_true + 0.1 * np.random.randn(self.n)
+        self.groups = np.array(['type_A'] * 50 + ['type_B'] * 50)
+
+    def test_compute_metrics(self):
+        """Test metric computation."""
+        metrics = ModelEvaluator.compute_metrics(self.y_true, self.y_pred)
+
+        self.assertIsInstance(metrics, PerformanceMetrics)
+        self.assertGreater(metrics.r2, 0.8)  # Should be high correlation
+        self.assertLess(metrics.mae, 0.5)
+        self.assertAlmostEqual(metrics.mean_residual, 0.0, delta=0.1)
+
+    def test_per_group_metrics(self):
+        """Test per-group metric computation."""
+        group_metrics = ModelEvaluator.compute_per_group_metrics(
+            self.y_true, self.y_pred, self.groups
+        )
+
+        self.assertIn('type_A', group_metrics)
+        self.assertIn('type_B', group_metrics)
+        self.assertIsInstance(group_metrics['type_A'], PerformanceMetrics)
+
+    def test_metrics_to_dict(self):
+        """Test metrics conversion to dictionary."""
+        metrics = ModelEvaluator.compute_metrics(self.y_true, self.y_pred)
+        metrics_dict = metrics.to_dict()
+
+        self.assertIn('r2', metrics_dict)
+        self.assertIn('mae', metrics_dict)
+        self.assertIn('rmse', metrics_dict)
+
+
+class TestModelComparator(unittest.TestCase):
+    """Test model comparison framework (Prompt 5)."""
+
+    def setUp(self):
+        """Create test data."""
+        np.random.seed(42)
+        self.n = 100
+
+        self.y_true = np.random.randn(self.n)
+        self.y_pred_a = self.y_true + 0.1 * np.random.randn(self.n)
+        self.y_pred_b = self.y_true + 0.2 * np.random.randn(self.n)
+
+    def test_compare_predictions(self):
+        """Test pairwise model comparison."""
+        comparator = ModelComparator(significance_level=0.05)
+
+        result = comparator.compare_predictions(
+            self.y_true,
+            self.y_pred_a,
+            self.y_pred_b,
+            model_a_name="Model A",
+            model_b_name="Model B"
+        )
+
+        self.assertEqual(result.model_a_name, "Model A")
+        self.assertEqual(result.model_b_name, "Model B")
+        self.assertIsNotNone(result.p_value)
+        self.assertIsNotNone(result.effect_size)
+        self.assertIsInstance(result.significant, bool)
+
+    def test_compare_multiple_models(self):
+        """Test multiple model comparison."""
+        comparator = ModelComparator()
+
+        predictions = {
+            'model_1': self.y_pred_a,
+            'model_2': self.y_pred_b,
+            'model_3': self.y_true + 0.15 * np.random.randn(self.n)
+        }
+
+        results = comparator.compare_multiple_models(
+            self.y_true,
+            predictions
+        )
+
+        # Should have 3 pairwise comparisons
+        self.assertEqual(len(results), 3)
+
+    def test_wilcoxon_test(self):
+        """Test non-parametric comparison."""
+        comparator = ModelComparator(use_parametric=False)
+
+        result = comparator.compare_predictions(
+            self.y_true,
+            self.y_pred_a,
+            self.y_pred_b
+        )
+
+        self.assertEqual(result.test_type, "wilcoxon")
+
+
+class TestPerformanceMatrix(unittest.TestCase):
+    """Test performance matrix creation (Prompt 5)."""
+
+    def setUp(self):
+        """Create test data."""
+        np.random.seed(42)
+        self.n = 100
+
+        self.y_true = np.random.randn(self.n)
+        self.groups = np.array(['euclidean'] * 50 + ['metric'] * 50)
+
+        self.predictions = {
+            'linear': self.y_true + 0.1 * np.random.randn(self.n),
+            'tree': self.y_true + 0.15 * np.random.randn(self.n)
+        }
+
+    def test_create_matrix(self):
+        """Test matrix creation."""
+        matrix = PerformanceMatrix.create_matrix(
+            self.predictions,
+            self.y_true,
+            self.groups,
+            metric_name='r2'
+        )
+
+        self.assertIsInstance(matrix, pd.DataFrame)
+        self.assertEqual(len(matrix), 2)  # 2 models
+        self.assertEqual(len(matrix.columns), 2)  # 2 groups
+
+
+class TestCrossValidator(unittest.TestCase):
+    """Test cross-validation framework (Prompt 6)."""
+
+    def setUp(self):
+        """Create test data."""
+        np.random.seed(42)
+        self.n = 100
+        self.n_features = 5
+
+        self.X = np.random.randn(self.n, self.n_features)
+        self.y = np.random.randn(self.n)
+        self.groups = np.array([i // 20 for i in range(self.n)])  # 5 groups
+
+    def test_k_fold_split(self):
+        """Test k-fold splitting."""
+        cv = CrossValidator(strategy=CVStrategy.K_FOLD, n_folds=5, random_seed=42)
+        folds = cv.split(self.X, self.y)
+
+        self.assertEqual(len(folds), 5)
+        self.assertIsNotNone(folds[0].train_indices)
+        self.assertIsNotNone(folds[0].val_indices)
+
+    def test_group_k_fold_split(self):
+        """Test group k-fold splitting."""
+        cv = CrossValidator(strategy=CVStrategy.GROUP_K_FOLD, n_folds=3, random_seed=42)
+        folds = cv.split(self.X, self.y, groups=self.groups)
+
+        self.assertEqual(len(folds), 3)
+
+        # Check no group overlap
+        for fold in folds:
+            train_groups = set(fold.train_groups)
+            val_groups = set(fold.val_groups)
+            self.assertEqual(len(train_groups & val_groups), 0)
+
+    def test_leave_one_group_out(self):
+        """Test leave-one-group-out."""
+        cv = CrossValidator(strategy=CVStrategy.LEAVE_ONE_GROUP_OUT)
+        folds = cv.split(self.X, self.y, groups=self.groups)
+
+        # Should have one fold per group
+        n_groups = len(np.unique(self.groups))
+        self.assertEqual(len(folds), n_groups)
+
+    def test_cross_validate(self):
+        """Test cross-validation with a model."""
+        cv = CrossValidator(strategy=CVStrategy.K_FOLD, n_folds=3, random_seed=42)
+
+        result = cv.cross_validate(
+            model_class=LinearRegressionModel,
+            model_params={'model_type': ModelType.LINEAR_OLS},
+            X=self.X,
+            y=self.y
+        )
+
+        self.assertIsInstance(result, CVResult)
+        self.assertEqual(result.n_folds, 3)
+        self.assertIn('r2', result.mean_metrics)
+        self.assertIn('mae', result.mean_metrics)
+
+
+class TestNestedCrossValidator(unittest.TestCase):
+    """Test nested cross-validation (Prompt 6)."""
+
+    def setUp(self):
+        """Create test data."""
+        np.random.seed(42)
+        self.n = 80  # Smaller for nested CV
+        self.n_features = 5
+
+        self.X = np.random.randn(self.n, self.n_features)
+        self.y = 2 * self.X[:, 0] + 1 * self.X[:, 1] + 0.1 * np.random.randn(self.n)
+        self.groups = np.array([i // 20 for i in range(self.n)])
+
+    def test_nested_cv(self):
+        """Test nested cross-validation."""
+        outer_cv = CrossValidator(strategy=CVStrategy.K_FOLD, n_folds=3, random_seed=42)
+        inner_cv = CrossValidator(strategy=CVStrategy.K_FOLD, n_folds=2, random_seed=42)
+
+        nested = NestedCrossValidator(outer_cv=outer_cv, inner_cv=inner_cv)
+
+        param_grid = [
+            {'model_type': ModelType.LINEAR_RIDGE, 'alpha': 0.1},
+            {'model_type': ModelType.LINEAR_RIDGE, 'alpha': 1.0}
+        ]
+
+        result = nested.nested_cross_validate(
+            model_class=LinearRegressionModel,
+            param_grid=param_grid,
+            X=self.X,
+            y=self.y
+        )
+
+        self.assertIn('mean_outer_metrics', result)
+        self.assertIn('best_params_per_fold', result)
+        self.assertEqual(len(result['best_params_per_fold']), 3)
+
+
+class TestHyperparameterTuner(unittest.TestCase):
+    """Test hyperparameter tuning (Prompt 7)."""
+
+    def setUp(self):
+        """Create test data."""
+        np.random.seed(42)
+        self.n_train = 80
+        self.n_val = 20
+        self.n_features = 5
+
+        X = np.random.randn(self.n_train + self.n_val, self.n_features)
+        y = 2 * X[:, 0] + 1 * X[:, 1] + 0.1 * np.random.randn(self.n_train + self.n_val)
+
+        self.X_train = X[:self.n_train]
+        self.y_train = y[:self.n_train]
+        self.X_val = X[self.n_train:]
+        self.y_val = y[self.n_train:]
+
+    def test_grid_search(self):
+        """Test grid search."""
+        tuner = HyperparameterTuner(
+            strategy=TuningStrategy.GRID_SEARCH,
+            scoring_metric='r2'
+        )
+
+        param_grid = {
+            'model_type': [ModelType.LINEAR_RIDGE],
+            'alpha': [0.1, 1.0, 10.0]
+        }
+
+        result = tuner.tune(
+            model_class=LinearRegressionModel,
+            param_grid=param_grid,
+            X_train=self.X_train,
+            y_train=self.y_train,
+            X_val=self.X_val,
+            y_val=self.y_val
+        )
+
+        self.assertIsNotNone(result.best_params)
+        self.assertGreater(result.best_score, 0.0)
+        self.assertEqual(result.n_trials, 3)
+
+    def test_random_search(self):
+        """Test random search."""
+        tuner = HyperparameterTuner(
+            strategy=TuningStrategy.RANDOM_SEARCH,
+            n_trials=5,
+            random_seed=42
+        )
+
+        param_grid = {
+            'model_type': [ModelType.LINEAR_RIDGE],
+            'alpha': [0.01, 0.1, 1.0, 10.0, 100.0]
+        }
+
+        result = tuner.tune(
+            model_class=LinearRegressionModel,
+            param_grid=param_grid,
+            X_train=self.X_train,
+            y_train=self.y_train,
+            X_val=self.X_val,
+            y_val=self.y_val
+        )
+
+        self.assertEqual(result.n_trials, 5)
+        self.assertLessEqual(len(result.all_params), 5)
+
+
+class TestModelSpecificTuner(unittest.TestCase):
+    """Test model-specific parameter grids (Prompt 7)."""
+
+    def test_linear_param_grid(self):
+        """Test linear model parameter grids."""
+        grid = ModelSpecificTuner.get_linear_param_grid('ridge')
+        self.assertIn('alpha', grid)
+        self.assertGreater(len(grid['alpha']), 1)
+
+    def test_tree_param_grid(self):
+        """Test tree model parameter grids."""
+        grid = ModelSpecificTuner.get_tree_param_grid('random_forest')
+        self.assertIn('n_estimators', grid)
+        self.assertIn('max_depth', grid)
+
+    def test_coarse_grid(self):
+        """Test coarse grid generation."""
+        grid = ModelSpecificTuner.get_coarse_grid('ridge')
+        self.assertIn('alpha', grid)
+        # Coarse grid should be smaller
+        self.assertLessEqual(len(grid['alpha']), 5)
+
+
+class TestFeatureScaler(unittest.TestCase):
+    """Test feature scaling (Prompt 8)."""
+
+    def setUp(self):
+        """Create test data."""
+        np.random.seed(42)
+        self.X = pd.DataFrame({
+            'feat_0': np.random.randn(100) * 10 + 50,
+            'feat_1': np.random.randn(100) * 2 + 10,
+            'feat_2': np.random.randn(100) * 0.1 + 1
+        })
+
+    def test_standardization(self):
+        """Test standardization."""
+        scaler = FeatureScaler(strategy=ScalingStrategy.STANDARDIZATION)
+        X_scaled = scaler.fit_transform(self.X)
+
+        # Check mean ~ 0, std ~ 1
+        for col in X_scaled.columns:
+            self.assertAlmostEqual(X_scaled[col].mean(), 0.0, delta=1e-10)
+            self.assertAlmostEqual(X_scaled[col].std(), 1.0, delta=1e-10)
+
+    def test_min_max_scaling(self):
+        """Test min-max scaling."""
+        scaler = FeatureScaler(strategy=ScalingStrategy.MIN_MAX)
+        X_scaled = scaler.fit_transform(self.X)
+
+        # Check range [0, 1]
+        for col in X_scaled.columns:
+            self.assertAlmostEqual(X_scaled[col].min(), 0.0, delta=1e-10)
+            self.assertAlmostEqual(X_scaled[col].max(), 1.0, delta=1e-10)
+
+    def test_robust_scaling(self):
+        """Test robust scaling."""
+        scaler = FeatureScaler(strategy=ScalingStrategy.ROBUST)
+        X_scaled = scaler.fit_transform(self.X)
+
+        # Just check it runs without error
+        self.assertEqual(X_scaled.shape, self.X.shape)
+
+    def test_fit_transform_consistency(self):
+        """Test fit and transform separately."""
+        scaler = FeatureScaler(strategy=ScalingStrategy.STANDARDIZATION)
+        scaler.fit(self.X)
+        X_scaled = scaler.transform(self.X)
+
+        # Should match fit_transform
+        X_scaled2 = FeatureScaler(strategy=ScalingStrategy.STANDARDIZATION).fit_transform(self.X)
+
+        pd.testing.assert_frame_equal(X_scaled, X_scaled2)
+
+
+class TestNonLinearTransformer(unittest.TestCase):
+    """Test non-linear transformations (Prompt 8)."""
+
+    def setUp(self):
+        """Create test data."""
+        np.random.seed(42)
+        self.X = pd.DataFrame({
+            'feat_0': np.abs(np.random.randn(100)) + 1,  # Positive
+            'feat_1': np.abs(np.random.randn(100)) + 0.1,
+            'feat_2': np.random.randn(100)
+        })
+
+    def test_log_transform(self):
+        """Test log transformation."""
+        transformer = NonLinearTransformer(
+            transformation=TransformationType.LOG,
+            features=['feat_0', 'feat_1']
+        )
+        X_transformed = transformer.fit_transform(self.X)
+
+        # Log should reduce skewness
+        self.assertLess(X_transformed['feat_0'].max(), self.X['feat_0'].max())
+
+    def test_sqrt_transform(self):
+        """Test square root transformation."""
+        transformer = NonLinearTransformer(
+            transformation=TransformationType.SQRT,
+            features=['feat_0']
+        )
+        X_transformed = transformer.fit_transform(self.X)
+
+        # Check sqrt applied
+        self.assertTrue(np.all(X_transformed['feat_0'] >= 0))
+
+    def test_square_transform(self):
+        """Test square transformation."""
+        transformer = NonLinearTransformer(
+            transformation=TransformationType.SQUARE,
+            features=['feat_2']
+        )
+        X_transformed = transformer.fit_transform(self.X)
+
+        # Check squared
+        self.assertTrue(np.all(X_transformed['feat_2'] >= 0))
+
+
+class TestFeatureInteractionGenerator(unittest.TestCase):
+    """Test feature interaction generation (Prompt 8)."""
+
+    def setUp(self):
+        """Create test data."""
+        np.random.seed(42)
+        self.X = pd.DataFrame({
+            'feat_0': np.random.randn(100),
+            'feat_1': np.random.randn(100),
+            'feat_2': np.random.randn(100)
+        })
+
+    def test_pairwise_interactions(self):
+        """Test pairwise interaction generation."""
+        generator = FeatureInteractionGenerator()
+        X_interactions = generator.fit_transform(self.X)
+
+        # Should have original + interaction features
+        self.assertGreater(len(X_interactions.columns), len(self.X.columns))
+
+        # Check interaction columns exist
+        self.assertIn('feat_0_x_feat_1', X_interactions.columns)
+
+    def test_specific_pairs(self):
+        """Test specific interaction pairs."""
+        generator = FeatureInteractionGenerator(
+            interaction_pairs=[('feat_0', 'feat_1')]
+        )
+        X_interactions = generator.fit_transform(self.X)
+
+        # Should have original + 1 interaction
+        self.assertEqual(len(X_interactions.columns), len(self.X.columns) + 1)
+
+    def test_max_interactions_limit(self):
+        """Test interaction limit."""
+        generator = FeatureInteractionGenerator(max_interactions=1)
+        X_interactions = generator.fit_transform(self.X)
+
+        # Should have original + 1 interaction
+        self.assertEqual(len(X_interactions.columns), len(self.X.columns) + 1)
+
+
+class TestPCAReducer(unittest.TestCase):
+    """Test PCA dimensionality reduction (Prompt 8)."""
+
+    def setUp(self):
+        """Create test data."""
+        np.random.seed(42)
+        self.X = pd.DataFrame({
+            'feat_0': np.random.randn(100),
+            'feat_1': np.random.randn(100),
+            'feat_2': np.random.randn(100),
+            'feat_3': np.random.randn(100),
+            'feat_4': np.random.randn(100)
+        })
+
+    def test_pca_with_n_components(self):
+        """Test PCA with fixed number of components."""
+        reducer = PCAReducer(n_components=2)
+        X_pca = reducer.fit_transform(self.X)
+
+        self.assertEqual(X_pca.shape[1], 2)
+        self.assertIn('PC1', X_pca.columns)
+        self.assertIn('PC2', X_pca.columns)
+
+    def test_pca_with_variance_threshold(self):
+        """Test PCA with variance threshold."""
+        reducer = PCAReducer(variance_threshold=0.8)
+        X_pca = reducer.fit_transform(self.X)
+
+        # Should capture 80% of variance
+        variance = reducer.get_explained_variance()
+        self.assertGreaterEqual(np.sum(variance), 0.8)
+
+    def test_component_loadings(self):
+        """Test component loadings extraction."""
+        reducer = PCAReducer(n_components=2)
+        reducer.fit(self.X)
+
+        loadings = reducer.get_component_loadings()
+        self.assertEqual(loadings.shape[0], 5)  # 5 original features
+        self.assertEqual(loadings.shape[1], 2)  # 2 components
+
+
+class TestAdvancedFeatureSelector(unittest.TestCase):
+    """Test advanced feature selection (Prompt 8)."""
+
+    def setUp(self):
+        """Create test data with correlated features."""
+        np.random.seed(42)
+        n = 100
+
+        feat_0 = np.random.randn(n)
+        feat_1 = feat_0 + 0.01 * np.random.randn(n)  # Highly correlated
+
+        self.X = pd.DataFrame({
+            'feat_0': feat_0,
+            'feat_1': feat_1,
+            'feat_2': np.random.randn(n),
+            'feat_3': np.random.randn(n)
+        })
+
+    def test_remove_correlated_features(self):
+        """Test correlated feature removal."""
+        X_reduced, removed = AdvancedFeatureSelector.remove_correlated_features(
+            self.X,
+            threshold=0.95
+        )
+
+        # feat_0 and feat_1 are highly correlated
+        self.assertLess(len(X_reduced.columns), len(self.X.columns))
+        self.assertGreater(len(removed), 0)
+
+    def test_select_by_importance(self):
+        """Test selection by importance."""
+        importance_scores = {
+            'feat_0': 0.5,
+            'feat_1': 0.3,
+            'feat_2': 0.8,
+            'feat_3': 0.1
+        }
+
+        X_selected = AdvancedFeatureSelector.select_by_importance(
+            self.X,
+            importance_scores,
+            top_k=2
+        )
+
+        self.assertEqual(len(X_selected.columns), 2)
+        self.assertIn('feat_2', X_selected.columns)  # Highest importance
+        self.assertIn('feat_0', X_selected.columns)  # Second highest
 
 
 if __name__ == '__main__':

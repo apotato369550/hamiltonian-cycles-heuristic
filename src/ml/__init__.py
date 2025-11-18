@@ -5,10 +5,12 @@ This package provides ML models to predict which vertices make good TSP tour
 starting points (anchors) based on structural graph features.
 
 Key modules:
-- dataset: Dataset preparation and train/test splitting
-- models: Linear regression and tree-based models
-- evaluation: Model evaluation and comparison
-- interpretation: Model interpretation and feature importance
+- dataset: Dataset preparation and train/test splitting (Prompts 1-2)
+- models: Linear regression and tree-based models (Prompts 3-4)
+- evaluation: Model evaluation and comparison (Prompt 5)
+- cross_validation: Cross-validation strategies (Prompt 6)
+- tuning: Hyperparameter tuning (Prompt 7)
+- feature_engineering: Feature scaling, transformations, interactions (Prompt 8)
 """
 
 from .dataset import (
@@ -22,19 +24,85 @@ from .dataset import (
 from .models import (
     LinearRegressionModel,
     TreeBasedModel,
-    ModelType
+    ModelType,
+    ModelResult
+)
+
+from .evaluation import (
+    ModelEvaluator,
+    ModelComparator,
+    PerformanceMatrix,
+    PerformanceMetrics,
+    AlgorithmPerformanceMetrics,
+    ComparisonResult
+)
+
+from .cross_validation import (
+    CrossValidator,
+    NestedCrossValidator,
+    CVStrategy,
+    CVResult,
+    CVFold
+)
+
+from .tuning import (
+    HyperparameterTuner,
+    ModelSpecificTuner,
+    TuningStrategy,
+    TuningResult
+)
+
+from .feature_engineering import (
+    FeatureScaler,
+    NonLinearTransformer,
+    FeatureInteractionGenerator,
+    PCAReducer,
+    AdvancedFeatureSelector,
+    ScalingStrategy,
+    TransformationType
 )
 
 __all__ = [
-    # Dataset
+    # Dataset (Prompts 1-2)
     'MLProblemType',
     'DatasetPreparator',
     'SplitStrategy',
     'TrainTestSplitter',
     'DatasetSplit',
 
-    # Models
+    # Models (Prompts 3-4)
     'LinearRegressionModel',
     'TreeBasedModel',
     'ModelType',
+    'ModelResult',
+
+    # Evaluation (Prompt 5)
+    'ModelEvaluator',
+    'ModelComparator',
+    'PerformanceMatrix',
+    'PerformanceMetrics',
+    'AlgorithmPerformanceMetrics',
+    'ComparisonResult',
+
+    # Cross-Validation (Prompt 6)
+    'CrossValidator',
+    'NestedCrossValidator',
+    'CVStrategy',
+    'CVResult',
+    'CVFold',
+
+    # Tuning (Prompt 7)
+    'HyperparameterTuner',
+    'ModelSpecificTuner',
+    'TuningStrategy',
+    'TuningResult',
+
+    # Feature Engineering (Prompt 8)
+    'FeatureScaler',
+    'NonLinearTransformer',
+    'FeatureInteractionGenerator',
+    'PCAReducer',
+    'AdvancedFeatureSelector',
+    'ScalingStrategy',
+    'TransformationType',
 ]
