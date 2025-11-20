@@ -11,6 +11,10 @@ Key modules:
 - cross_validation: Cross-validation strategies (Prompt 6)
 - tuning: Hyperparameter tuning (Prompt 7)
 - feature_engineering: Feature scaling, transformations, interactions (Prompt 8)
+- interpretation: Model interpretation and explanation (Prompt 9)
+- pipeline: Prediction-to-algorithm pipeline (Prompt 10)
+- generalization: Model generalization testing (Prompt 11)
+- online_learning: Online learning and model updates (Prompt 12)
 """
 
 from .dataset import (
@@ -62,6 +66,42 @@ from .feature_engineering import (
     TransformationType
 )
 
+from .interpretation import (
+    LinearModelInterpreter,
+    TreeModelInterpreter,
+    ModelInterpreter,
+    CoefficientAnalysis,
+    FeatureContribution,
+    PartialDependenceResult,
+    CaseStudyAnalyzer
+)
+
+from .pipeline import (
+    MLPipeline,
+    PredictionResult,
+    AlgorithmExecutionResult,
+    BatchPredictionResult,
+    ErrorAnalyzer
+)
+
+from .generalization import (
+    GeneralizationTester,
+    GeneralizationResult,
+    GeneralizationType,
+    FailureModeAnalyzer,
+    ConsistencyAnalyzer
+)
+
+from .online_learning import (
+    IncrementalLearner,
+    ModelVersionManager,
+    ActiveLearner,
+    ModelEnsemble,
+    ModelVersion,
+    UpdateStrategy,
+    LearningCurvePoint
+)
+
 __all__ = [
     # Dataset (Prompts 1-2)
     'MLProblemType',
@@ -105,4 +145,36 @@ __all__ = [
     'AdvancedFeatureSelector',
     'ScalingStrategy',
     'TransformationType',
+
+    # Interpretation (Prompt 9)
+    'LinearModelInterpreter',
+    'TreeModelInterpreter',
+    'ModelInterpreter',
+    'CoefficientAnalysis',
+    'FeatureContribution',
+    'PartialDependenceResult',
+    'CaseStudyAnalyzer',
+
+    # Pipeline (Prompt 10)
+    'MLPipeline',
+    'PredictionResult',
+    'AlgorithmExecutionResult',
+    'BatchPredictionResult',
+    'ErrorAnalyzer',
+
+    # Generalization (Prompt 11)
+    'GeneralizationTester',
+    'GeneralizationResult',
+    'GeneralizationType',
+    'FailureModeAnalyzer',
+    'ConsistencyAnalyzer',
+
+    # Online Learning (Prompt 12)
+    'IncrementalLearner',
+    'ModelVersionManager',
+    'ActiveLearner',
+    'ModelEnsemble',
+    'ModelVersion',
+    'UpdateStrategy',
+    'LearningCurvePoint',
 ]
