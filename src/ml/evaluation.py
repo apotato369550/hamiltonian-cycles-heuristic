@@ -287,8 +287,8 @@ class ModelComparator:
         # Effect size (Cohen's d)
         effect_size = self._cohens_d(errors_a, errors_b)
 
-        # Significance
-        significant = p_value < self.significance_level
+        # Significance (cast to Python bool for type consistency)
+        significant = bool(p_value < self.significance_level)
 
         return ComparisonResult(
             model_a_name=model_a_name,

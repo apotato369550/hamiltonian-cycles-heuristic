@@ -1013,7 +1013,8 @@ class TestFeatureScaler(unittest.TestCase):
         # Check mean ~ 0, std ~ 1
         for col in X_scaled.columns:
             self.assertAlmostEqual(X_scaled[col].mean(), 0.0, delta=1e-10)
-            self.assertAlmostEqual(X_scaled[col].std(), 1.0, delta=1e-10)
+            # Use ddof=0 to match sklearn's StandardScaler (population std)
+            self.assertAlmostEqual(X_scaled[col].std(ddof=0), 1.0, delta=1e-10)
 
     def test_min_max_scaling(self):
         """Test min-max scaling."""
