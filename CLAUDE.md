@@ -104,30 +104,61 @@ Key files:
 - `src/tests/test_phase3_features.py` - All Phase 3 tests (111 tests, consolidated 11-13-2025)
 - `src/features/CLAUDE.md` - Detailed implementation documentation
 
-### Phase 4: Machine Learning (READY TO START)
-Status: Not yet started - Phase 3 complete, ready for ML implementation
+### Phase 4: Machine Learning (COMPLETE - Prompts 1-8)
+Status: 100% complete (All 8 prompts implemented, validated 11-22-2025)
 
-Will train models to predict:
-- Which vertices make good anchors
-- Using linear regression (interpretability focus)
-- With tree-based comparison baselines
-- Cross-validated on diverse graph types
+Completed:
+- ✓ ML problem formulation and dataset preparation (Prompt 1)
+- ✓ Train/test splitting strategies (5 strategies) (Prompt 2)
+- ✓ Linear regression models (OLS, Ridge, Lasso, ElasticNet) (Prompt 3)
+- ✓ Tree-based models (Decision Tree, Random Forest, Gradient Boosting) (Prompt 4)
+- ✓ Model evaluation and comparison framework (Prompt 5)
+- ✓ Cross-validation strategies (K-fold, stratified, group, nested) (Prompt 6)
+- ✓ Hyperparameter tuning (grid search, random search) (Prompt 7)
+- ✓ Feature engineering (scaling, transformations, interactions, PCA) (Prompt 8)
+- ✓ 96 tests passing (100% pass rate)
+- ✓ Production-ready, validated 11-22-2025
 
-Prerequisites complete:
-- ✓ Feature extraction system (93 features available)
-- ✓ Anchor quality labeling system (5 labeling strategies)
-- ✓ Dataset pipeline (graph → labeled features)
-- ✓ Feature selection tools (reduce feature set)
-- ✓ Feature transformation (standardization, engineering)
+Key files:
+- `src/ml/` - Complete ML package
+- `src/ml/dataset.py` - Dataset preparation and splitting
+- `src/ml/models.py` - Linear and tree-based models
+- `src/ml/evaluation.py` - Model evaluation and comparison
+- `src/ml/cross_validation.py` - Cross-validation strategies
+- `src/ml/tuning.py` - Hyperparameter tuning
+- `src/ml/feature_engineering.py` - Feature transformations
+- `src/tests/test_phase4_ml.py` - All Phase 4 tests (96 tests, consolidated 11-22-2025)
+- `src/ml/CLAUDE.md` - Detailed implementation documentation
 
-### Phase 5: Pipeline Integration (FUTURE)
-Status: Not yet started
+### Phase 5: Pipeline Integration (COMPLETE - Prompts 1-4)
+Status: Prompts 1-4 complete (validated 11-22-2025)
 
-Will create:
-- End-to-end experiment orchestration
-- Configuration management
-- Reproducibility infrastructure
-- Performance monitoring
+Completed:
+- ✓ Pipeline architecture design (PipelineStage, PipelineOrchestrator) (Prompt 1)
+- ✓ Configuration management system (ExperimentConfig, YAML validation) (Prompt 2)
+- ✓ Experiment tracking and metadata (ExperimentTracker, ExperimentRegistry) (Prompt 3)
+- ✓ Reproducibility infrastructure (seed propagation, environment tracking) (Prompt 4)
+- ✓ 45 tests passing (100% pass rate)
+- ✓ Production-ready, validated 11-22-2025
+
+Remaining (Prompts 5-12):
+- Automated testing and validation
+- Performance monitoring and profiling
+- Parallel execution and scaling
+- Error handling and fault tolerance
+- Results analysis and reporting
+- Interactive exploration tools
+- Documentation system
+- Version control and collaboration
+
+Key files:
+- `src/pipeline/` - Complete pipeline integration package
+- `src/pipeline/orchestrator.py` - Multi-stage pipeline orchestration
+- `src/pipeline/config.py` - YAML configuration management
+- `src/pipeline/tracking.py` - Experiment tracking and registry
+- `src/pipeline/reproducibility.py` - Reproducibility management
+- `src/tests/test_phase5_pipeline.py` - All Phase 5 tests (45 tests)
+- `src/pipeline/CLAUDE.md` - Detailed implementation documentation
 
 ### Phase 6: Analysis and Insights (ONGOING)
 Status: Continuous throughout all phases
@@ -326,9 +357,9 @@ Critical design decisions:
 ├── /src/
 │   ├── /graph_generation/             # Phase 1 (COMPLETE) - Has CLAUDE.md
 │   ├── /algorithms/                   # Phase 2 Steps 1-4 (COMPLETE) - Has CLAUDE.md
-│   ├── /features/                     # Phase 3 Prompts 1-4 (COMPLETE) - Has CLAUDE.md
-│   ├── /ml/                          # Phase 4 (FUTURE)
-│   ├── /pipeline/                    # Phase 5 (FUTURE)
+│   ├── /features/                     # Phase 3 Prompts 1-12 (COMPLETE) - Has CLAUDE.md
+│   ├── /ml/                          # Phase 4 Prompts 1-8 (COMPLETE) - Has CLAUDE.md
+│   ├── /pipeline/                    # Phase 5 Prompts 1-4 (COMPLETE) - Has CLAUDE.md
 │   └── /tests/                        # Has CLAUDE.md
 ├── /planner/                          # Planner agent logs
 │   └── dd-mm-yyyy_plan_name.md
@@ -361,8 +392,8 @@ Critical design decisions:
 
 ## Test Suite Status
 
-All 234+ tests passing (validated 11-13-2025).
-**Updated 11-13-2025:** Tests consolidated to one file per phase for better maintainability.
+All 375+ tests passing (validated 11-22-2025).
+**Updated 11-22-2025:** Tests consolidated to one file per phase for better maintainability.
 
 Phase 1 - Graph Generation (34 tests):
 - 10 Euclidean generator tests
@@ -386,10 +417,23 @@ Phase 3 - Feature Engineering (111 tests):
 - Prompts 9-12: Labeling, dataset pipeline, selection, transformation (47 tests)
   - Requires pandas and scikit-learn for prompts 10-12
 
+Phase 4 - Machine Learning (96 tests):
+- **test_phase4_ml.py** (added 11-22-2025)
+- Prompts 1-4: Dataset preparation, splitting, linear/tree models (28 tests)
+- Prompts 5-8: Evaluation, cross-validation, tuning, feature engineering (68 tests)
+  - Requires pandas and scikit-learn
+
+Phase 5 - Pipeline Integration (45 tests):
+- **test_phase5_pipeline.py** (added 11-22-2025)
+- Prompts 1-4: Orchestrator, config, tracking, reproducibility (45 tests)
+  - Core dependencies only (no ML packages required)
+
 Run all tests: `python3 -m unittest discover -s src/tests -p "test_*.py" -v`
 Run Phase 1 only: `python3 src/tests/test_graph_generators.py`
 Run Phase 2 only: `python3 src/tests/test_phase2_algorithms.py`
 Run Phase 3 only: `python3 src/tests/test_phase3_features.py`
+Run Phase 4 only: `python3 src/tests/test_phase4_ml.py`
+Run Phase 5 only: `python3 src/tests/test_phase5_pipeline.py`
 
 ---
 
@@ -552,31 +596,44 @@ When coordinating between agents:
    - Reference `/guides/02_algorithm_benchmarking_pipeline.md`
    - Status: Steps 1-4 complete, ready for steps 5-8
 
-2. Begin Phase 4: Machine Learning - READY TO START
-   - Phase 3 complete (all 12 prompts)
-   - Feature extraction system operational (93 features)
-   - Labeling system operational (5 strategies)
-   - Dataset pipeline ready for ML training
-   - Reference `/guides/04_machine_learning_component.md`
+2. Complete Phase 5: Pipeline Integration (Prompts 5-12)
+   - Prompts 1-4 complete (orchestrator, config, tracking, reproducibility)
+   - Remaining prompts: testing, profiling, parallelization, error handling, analysis, exploration
+   - Reference `/guides/05_pipeline_integration_workflow.md`
+   - Status: Core infrastructure complete, advanced features pending
 
-3. Maintain Phase 1, 2 (Steps 1-4), and Phase 3
+3. Maintain Phase 1, 2 (Steps 1-4), 3, 4, and 5 (Prompts 1-4)
    - All systems stable and production-ready
-   - 187 tests passing (100% pass rate)
+   - 375+ tests passing (100% pass rate)
    - No breaking changes to existing APIs
    - Minor enhancements only if needed
 
 ---
 
-**Document Version:** 4.2 (Labeling bug fixes + test cleanup)
-**Last Updated:** 11-17-2025
+**Document Version:** 5.0 (Phase 4 and Phase 5 Prompts 1-4 complete)
+**Last Updated:** 11-22-2025
 **Maintained By:** Foreman (orchestrator agent)
-**Project Phase:** Phase 1 complete, Phase 2 50% complete (4/8 steps), Phase 3 complete
+**Project Phase:** Phase 1 complete, Phase 2 50% complete (4/8 steps), Phase 3 complete, Phase 4 complete, Phase 5 33% complete (4/12 prompts)
 
-**Recent Changes (11-17-2025)**:
+**Recent Changes (11-22-2025)**:
+- **Phase 5 Implementation (Prompts 1-4)**:
+  - Pipeline orchestration with PipelineStage and PipelineOrchestrator
+  - YAML configuration management with validation (ExperimentConfig)
+  - Experiment tracking and registry (ExperimentTracker, ExperimentRegistry)
+  - Reproducibility infrastructure (SeedManager, EnvironmentInfo, git tracking)
+  - 45 new tests, all passing
+  - Complete src/pipeline/CLAUDE.md documentation
+
+- **Phase 4 Complete (Prompts 1-8)**:
+  - All 8 prompts implemented (dataset, models, evaluation, CV, tuning, feature engineering)
+  - 96 tests passing (100% pass rate)
+  - Full ML pipeline for anchor prediction
+
+**Previous Changes (11-17-2025)**:
+- Fixed Phase 4 test bugs (standardization ddof, numpy bool casting)
 - Fixed labeling percentile formula bugs (rank-based, multiclass)
 - Fixed binary classification threshold handling
 - Removed test_phase3_integration.py to reduce confusion
-- All 111 Phase 3 tests now passing
 
 **Previous Changes (11-13-2025)**:
 - Algorithm auto-registration in `src/algorithms/__init__.py`

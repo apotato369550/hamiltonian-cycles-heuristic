@@ -1,0 +1,70 @@
+"""
+Pipeline Integration Module (Phase 5).
+
+This module provides infrastructure for orchestrating multi-stage TSP research
+experiments, including configuration management, experiment tracking, and
+reproducibility guarantees.
+
+Key Components:
+- PipelineStage: Individual pipeline stages (generation, benchmarking, etc.)
+- PipelineOrchestrator: Coordinates execution of multi-stage experiments
+- ExperimentConfig: Configuration management and validation
+- ExperimentTracker: Tracks experiment metadata and results
+- ReproducibilityManager: Ensures reproducible experiments
+"""
+
+from .orchestrator import (
+    PipelineStage,
+    PipelineOrchestrator,
+    StageResult,
+    StageStatus
+)
+
+from .config import (
+    ExperimentConfig,
+    ConfigValidator,
+    GraphGenConfig,
+    BenchmarkConfig,
+    FeatureConfig,
+    ModelConfig
+)
+
+from .tracking import (
+    ExperimentTracker,
+    ExperimentRegistry,
+    ExperimentMetadata,
+    ExperimentStatus
+)
+
+from .reproducibility import (
+    ReproducibilityManager,
+    EnvironmentInfo,
+    SeedManager
+)
+
+__all__ = [
+    # Orchestrator
+    'PipelineStage',
+    'PipelineOrchestrator',
+    'StageResult',
+    'StageStatus',
+
+    # Configuration
+    'ExperimentConfig',
+    'ConfigValidator',
+    'GraphGenConfig',
+    'BenchmarkConfig',
+    'FeatureConfig',
+    'ModelConfig',
+
+    # Tracking
+    'ExperimentTracker',
+    'ExperimentRegistry',
+    'ExperimentMetadata',
+    'ExperimentStatus',
+
+    # Reproducibility
+    'ReproducibilityManager',
+    'EnvironmentInfo',
+    'SeedManager'
+]

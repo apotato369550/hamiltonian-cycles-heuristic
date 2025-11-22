@@ -3,8 +3,8 @@
 ## Purpose
 Comprehensive test coverage for TSP research platform. Validates correctness, performance, and edge cases across all phases.
 
-**Total Tests**: 234+
-**Pass Rate**: 100% (validated 11-17-2025)
+**Total Tests**: 375+
+**Pass Rate**: 100% (validated 11-22-2025)
 **Organization**: One consolidated file per phase for better maintainability
 
 ---
@@ -31,7 +31,7 @@ Comprehensive test coverage for TSP research platform. Validates correctness, pe
 
 ## Test Organization
 
-**Updated 11-17-2025:** Tests consolidated to one file per phase. Phase 4 tests added.
+**Updated 11-22-2025:** Tests consolidated to one file per phase. Phase 5 tests added.
 
 ```
 tests/
@@ -40,7 +40,8 @@ tests/
 ├── test_graph_generators.py          # Phase 1 (34 tests) ✅ No changes
 ├── test_phase2_algorithms.py         # Phase 2 (89 tests) ⭐ Consolidated
 ├── test_phase3_features.py           # Phase 3 (111 tests) ⭐ Consolidated
-└── test_phase4_ml.py                 # Phase 4 (NEW) ⭐ Prompts 1-4
+├── test_phase4_ml.py                 # Phase 4 (96 tests) ⭐ Prompts 1-8
+└── test_phase5_pipeline.py           # Phase 5 (45 tests) ⭐ NEW - Prompts 1-4
 ```
 
 **Legacy files removed** (11-13-2025):
@@ -310,11 +311,68 @@ python3 -m unittest src.tests.test_phase4_ml.TestLinearRegressionModel -v
 - Requires: pandas, scikit-learn
 - Install with: `pip install pandas scikit-learn`
 
-**Future Prompts** (Not yet implemented):
-- Prompt 5: Model Evaluation and Comparison
-- Prompt 6: Cross-Validation Strategy
-- Prompt 7: Hyperparameter Tuning
-- Prompt 8-12: Feature Engineering, Interpretation, Pipeline, Generalization, Online Learning
+---
+
+## Phase 5: Pipeline Integration Tests (Prompts 1-4)
+
+**File**: `test_phase5_pipeline.py` (NEW - Added 11-22-2025)
+
+**Status**: Prompts 1-4 implemented and tested
+
+### Test Classes (9 classes, 45 tests total)
+
+**Pipeline Orchestration Tests** (`TestPipelineStage`, `TestPipelineOrchestrator` - 9 tests):
+- Stage initialization and execution
+- Input validation
+- Stage failure handling
+- Multi-stage pipeline execution
+- Pipeline stops on failure
+- Manifest generation
+
+**Configuration Tests** (`TestExperimentConfig`, `TestConfigValidation` - 10 tests):
+- Config initialization and serialization
+- YAML load/save roundtrip
+- Validation of all config sections
+- Error catching (missing name, invalid types, bad ratios)
+- Template generation
+
+**Experiment Tracking Tests** (`TestExperimentTracker`, `TestExperimentRegistry` - 11 tests):
+- Tracker initialization and directory creation
+- Experiment lifecycle (pending → running → completed/failed)
+- Metadata saving
+- Registry persistence
+- Querying by status and name
+- Experiment ID generation
+- Summary statistics
+
+**Reproducibility Tests** (`TestSeedManager`, `TestEnvironmentInfo`, `TestReproducibilityManager` - 15 tests):
+- Seed manager initialization
+- Global seed setting (Python random, NumPy)
+- Stage-specific seed derivation
+- Graph/model seed generation
+- Environment capture
+- Git commit tracking
+- Environment verification
+
+**Total Phase 5 Tests**: 45 tests (Prompts 1-4 complete)
+
+**Key Coverage**:
+- ✓ Pipeline orchestration with resumability
+- ✓ YAML configuration management and validation
+- ✓ Experiment tracking and metadata
+- ✓ Experiment registry with querying
+- ✓ Deterministic seed propagation
+- ✓ Environment tracking (Python, packages, OS)
+- ✓ Git versioning and reproducibility checks
+
+**Dependencies**:
+- Core dependencies only (no ML packages required)
+- Uses Python stdlib + numpy
+
+**Run Phase 5 Tests**:
+```bash
+python3 -m unittest src.tests.test_phase5_pipeline -v
+```
 
 ---
 
@@ -324,20 +382,21 @@ python3 -m unittest src.tests.test_phase4_ml.TestLinearRegressionModel -v
 - **Phase 1 Tests**: Validate graph generation (34 tests)
 - **Phase 2 Tests**: Validate algorithms (89 tests)
 - **Phase 3 Tests**: Validate feature engineering (111 tests)
-- **Phase 4 Tests**: Validate ML models (28 tests for Prompts 1-4)
+- **Phase 4 Tests**: Validate ML models (96 tests for Prompts 1-8)
+- **Phase 5 Tests**: Validate pipeline integration (45 tests for Prompts 1-4)
 
 ---
 
-**Test Suite Version**: 5.0 (Phase 4 Prompts 1-4 added)
-**Last Updated**: 11-17-2025
-**Status**: All tests passing (262+/262+)
+**Test Suite Version**: 6.0 (Phase 5 Prompts 1-4 added)
+**Last Updated**: 11-22-2025
+**Status**: All tests passing (375+/375+)
 **Note**: Phase 3 and Phase 4 require pandas/scikit-learn
 
 **Changelog**:
-- v5.0 (11-17-2025): Added Phase 4 Prompts 1-4 tests (28 tests), added test maintenance reminder
+- v6.0 (11-22-2025): Added Phase 5 Prompts 1-4 tests (45 tests) - Pipeline integration
+- v5.0 (11-17-2025): Added Phase 4 Prompts 1-8 tests (96 tests), fixed test bugs
 - v4.1 (11-17-2025): Removed test_phase3_integration.py to reduce confusion, labeling bug fixes
 - v4.0 (11-13-2025): Consolidated tests to one file per phase, algorithm auto-registration fix
 - v3.0 (11-10-2025): Added Phase 3 Prompts 1-8 tests
 - v2.0 (11-05-2025): Added Phase 2 tests
-- v1.0 (10-29-2025): Initial Phase 1 tests
 - v1.0 (10-29-2025): Initial Phase 1 tests
