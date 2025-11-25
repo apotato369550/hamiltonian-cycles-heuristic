@@ -42,6 +42,34 @@ from .reproducibility import (
     SeedManager
 )
 
+from .validation import (
+    StageValidator,
+    ValidationError
+)
+
+from .profiling import (
+    PerformanceMonitor,
+    PerformanceMetrics,
+    RuntimeProfiler,
+    profile_stage
+)
+
+from .parallel import (
+    ParallelExecutor,
+    ParallelConfig,
+    ResourceManager,
+    create_parallel_executor
+)
+
+from .error_handling import (
+    ErrorHandler,
+    ErrorRecord,
+    Checkpoint,
+    retry_with_backoff,
+    try_continue,
+    graceful_degradation
+)
+
 __all__ = [
     # Orchestrator
     'PipelineStage',
@@ -66,5 +94,29 @@ __all__ = [
     # Reproducibility
     'ReproducibilityManager',
     'EnvironmentInfo',
-    'SeedManager'
+    'SeedManager',
+
+    # Validation (Prompt 5)
+    'StageValidator',
+    'ValidationError',
+
+    # Profiling (Prompt 6)
+    'PerformanceMonitor',
+    'PerformanceMetrics',
+    'RuntimeProfiler',
+    'profile_stage',
+
+    # Parallel Execution (Prompt 7)
+    'ParallelExecutor',
+    'ParallelConfig',
+    'ResourceManager',
+    'create_parallel_executor',
+
+    # Error Handling (Prompt 8)
+    'ErrorHandler',
+    'ErrorRecord',
+    'Checkpoint',
+    'retry_with_backoff',
+    'try_continue',
+    'graceful_degradation'
 ]
