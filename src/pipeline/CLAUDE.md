@@ -1,20 +1,26 @@
 # Pipeline Integration Module (Phase 5)
 
-**Status:** Prompts 1-4 Complete
-**Last Updated:** 11-22-2025
-**Test Coverage:** 45 tests, all passing
+**Status:** Prompts 1-8 Complete (Implementation), Tests Needed for 5-8
+**Last Updated:** 11-28-2025
+**Test Coverage:** 45 tests for Prompts 1-4, implementation complete for Prompts 5-8
 
 ---
 
 ## Overview
 
-This module provides infrastructure for orchestrating multi-stage TSP research experiments with modularity, reproducibility, and observability.
+This module provides complete infrastructure for orchestrating multi-stage TSP research experiments with modularity, reproducibility, observability, validation, profiling, parallelization, and fault tolerance.
 
-**Key Components:**
+**Key Components (Prompts 1-4):**
 - `PipelineOrchestrator`: Coordinates multi-stage pipeline execution
 - `ExperimentConfig`: YAML-based configuration management
 - `ExperimentTracker`: Tracks experiment metadata and results
 - `ReproducibilityManager`: Ensures reproducible experiments
+
+**Additional Components (Prompts 5-8):**
+- `StageValidator`: Validates stage outputs to catch errors early
+- `PerformanceMonitor`: Tracks runtime and memory usage
+- `ParallelExecutor`: Enables multi-core parallel execution
+- `ErrorHandler`: Provides robust error handling and fault tolerance
 
 ---
 
@@ -256,11 +262,36 @@ check = manager.check_reproducibility()
 - `EnvironmentInfo`: Python/package version tracking
 - Git commit and diff capture
 
+**Prompt 5 (Validation):**
+- `StageValidator`: Validates pipeline stage outputs
+- `ValidationError`: Exception for validation failures
+- Validation methods for all pipeline stages (graphs, benchmarks, features, models)
+
+**Prompt 6 (Profiling):**
+- `PerformanceMonitor`: Tracks runtime and memory usage
+- `PerformanceMetrics`: Performance data storage
+- `RuntimeProfiler`: Detailed profiling with statistics
+- `@profile_stage`: Decorator for automatic profiling
+
+**Prompt 7 (Parallel):**
+- `ParallelExecutor`: Multi-core parallel execution
+- `ParallelConfig`: Parallelization configuration
+- `ResourceManager`: CPU and memory resource management
+- `create_parallel_executor`: Factory function
+
+**Prompt 8 (Error Handling):**
+- `ErrorHandler`: Robust error tracking and management
+- `ErrorRecord`: Individual error records
+- `Checkpoint`: Save/resume for long operations
+- `@retry_with_backoff`: Retry decorator with exponential backoff
+- `@try_continue`: Continue on failure decorator
+- `@graceful_degradation`: Feature degradation decorator
+
 ---
 
-## Test Coverage (45 Tests)
+## Test Coverage
 
-**Test Classes:**
+**Implemented (45 Tests for Prompts 1-4):**
 - `TestPipelineStage` (4 tests)
 - `TestPipelineOrchestrator` (5 tests)
 - `TestExperimentConfig` (4 tests)
@@ -270,6 +301,14 @@ check = manager.check_reproducibility()
 - `TestSeedManager` (6 tests)
 - `TestEnvironmentInfo` (3 tests)
 - `TestReproducibilityManager` (5 tests)
+
+**Needed (Tests for Prompts 5-8):**
+- `TestStageValidator` - Stage output validation (target: ~12 tests)
+- `TestPerformanceMonitor` - Runtime/memory profiling (target: ~12 tests)
+- `TestParallelExecutor` - Parallel execution (target: ~12 tests)
+- `TestErrorHandler` - Error handling and checkpoints (target: ~14 tests)
+
+**Total Target:** ~95 tests (45 implemented, 50 needed)
 
 **Run tests:**
 ```bash
@@ -391,25 +430,247 @@ registry.register(tracker.metadata)
 
 ---
 
-## Future Work (Prompts 5-12)
+## Stage Validation (Prompt 5)
 
-**Not Implemented:**
-- Prompt 5: Automated testing and validation
-- Prompt 6: Performance monitoring and profiling
-- Prompt 7: Parallel execution and scaling
-- Prompt 8: Error handling and fault tolerance
+### Validating Stage Outputs
+
+```python
+from pipeline import StageValidator, ValidationError
+
+# Validate graph generation output
+try:
+    report = StageValidator.validate_graph_generation_output(Path("data/graphs"))
+    print(f"Found {report['graph_count']} valid graphs")
+except ValidationError as e:
+    print(f"Validation failed: {e}")
+
+# Validate benchmarking output
+report = StageValidator.validate_benchmarking_output(Path("data/benchmarks"))
+
+# Validate feature extraction output
+report = StageValidator.validate_feature_extraction_output(Path("data/features"))
+
+# Validate model training output
+report = StageValidator.validate_model_training_output(Path("models"))
+```
+
+### Validation Checks
+
+**Graph Generation:**
+- Directory exists and contains graph files
+- Each graph is valid JSON with required fields
+- Graph properties match configuration (size, type)
+- Metricity and symmetry as expected
+
+**Benchmarking:**
+- All tours are valid Hamiltonian cycles
+- Tour weights are reasonable (no NaN/inf)
+- Algorithm metadata is complete
+- No missing algorithm-graph combinations
+
+**Feature Extraction:**
+- Feature values in reasonable ranges
+- No NaN or infinite values
+- Feature counts match expected extractors
+- Labels present and valid
+
+**Model Training:**
+- Model files exist and loadable
+- Performance metrics reasonable
+- Training/test splits valid
+
+---
+
+## Performance Monitoring (Prompt 6)
+
+### Runtime and Memory Profiling
+
+```python
+from pipeline import PerformanceMonitor, profile_stage
+
+# Manual monitoring
+monitor = PerformanceMonitor()
+monitor.start("graph_generation")
+# ... do work ...
+metrics = monitor.stop("graph_generation")
+print(f"Duration: {metrics.duration_seconds}s")
+print(f"Memory delta: {metrics.memory_delta_mb}MB")
+
+# Decorator-based profiling
+@profile_stage
+def expensive_operation(data):
+    # Automatically profiled
+    return process(data)
+
+# Get all metrics
+all_metrics = monitor.get_all_metrics()
+monitor.save_metrics(Path("experiment/performance.json"))
+```
+
+### Runtime Profiler
+
+```python
+from pipeline import RuntimeProfiler
+
+# Profile specific code sections
+profiler = RuntimeProfiler()
+with profiler.profile("feature_extraction"):
+    features = extractor.extract(graph)
+
+# Get detailed statistics
+stats = profiler.get_statistics()
+# Scaling analysis: runtime vs graph size
+profiler.analyze_scaling(graph_sizes, runtimes)
+```
+
+---
+
+## Parallel Execution (Prompt 7)
+
+### Parallelizing Graph Operations
+
+```python
+from pipeline import ParallelExecutor, ParallelConfig, create_parallel_executor
+
+# Configure parallelization
+config = ParallelConfig(
+    n_workers=4,  # Number of parallel workers
+    backend='multiprocessing',
+    max_memory_mb=8000,  # Memory limit
+    timeout_seconds=300
+)
+
+# Create executor
+executor = create_parallel_executor(config)
+
+# Parallel graph generation
+graphs = executor.parallel_graph_generation(
+    generator=euclidean_gen,
+    sizes=[20, 50, 100],
+    instances_per_size=10
+)
+
+# Parallel benchmarking
+results = executor.parallel_benchmarking(
+    graphs=graphs,
+    algorithms=['nearest_neighbor', 'best_anchor']
+)
+
+# Parallel feature extraction
+features = executor.parallel_feature_extraction(
+    graphs=graphs,
+    extractors=[weight_extractor, topo_extractor]
+)
+```
+
+### Resource Management
+
+```python
+from pipeline import ResourceManager
+
+# Monitor system resources
+manager = ResourceManager(max_memory_mb=8000, max_cpu_percent=80)
+if manager.can_start_task(estimated_memory_mb=2000):
+    # Safe to start task
+    manager.reserve_resources(memory_mb=2000, cpu_percent=25)
+    try:
+        result = expensive_task()
+    finally:
+        manager.release_resources(memory_mb=2000, cpu_percent=25)
+```
+
+---
+
+## Error Handling and Fault Tolerance (Prompt 8)
+
+### Retry Patterns
+
+```python
+from pipeline import retry_with_backoff, try_continue, graceful_degradation
+
+# Retry failed operations
+@retry_with_backoff(max_attempts=3, initial_delay=1.0, backoff_factor=2.0)
+def unstable_operation():
+    # Automatically retried on failure
+    return fetch_data()
+
+# Continue on individual failures
+@try_continue
+def process_graph(graph):
+    # Failures logged, execution continues
+    return extract_features(graph)
+
+# Gracefully degrade on feature failures
+@graceful_degradation(default_value={})
+def expensive_feature(graph):
+    # Returns default if computation fails/times out
+    return compute_betweenness_centrality(graph)
+```
+
+### Error Handler and Checkpoints
+
+```python
+from pipeline import ErrorHandler, Checkpoint
+
+# Track errors across pipeline
+error_handler = ErrorHandler(output_dir=Path("experiment/errors"))
+
+for graph in graphs:
+    try:
+        result = process_graph(graph)
+    except Exception as e:
+        error_handler.record_error(
+            stage="benchmarking",
+            item_id=graph.graph_id,
+            error=e
+        )
+
+# Get error summary
+summary = error_handler.get_summary()
+print(f"Total errors: {summary['total_errors']}")
+print(f"Recoverable: {summary['recoverable_count']}")
+
+# Checkpointing for long operations
+checkpoint = Checkpoint(path=Path("experiment/checkpoint.json"))
+checkpoint.save({'processed': 50, 'results': results})
+
+# Resume from checkpoint
+if checkpoint.exists():
+    state = checkpoint.load()
+    start_from = state['processed']
+```
+
+---
+
+## Future Work (Prompts 9-12)
+
+**Not Implemented (Workflow Features):**
 - Prompt 9: Results analysis and reporting
 - Prompt 10: Interactive exploration tools
 - Prompt 11: Documentation system
 - Prompt 12: Version control and collaboration
 
-These are planned for future phases but not required for basic pipeline functionality.
+These are workflow usage features for consuming pipeline outputs, not core pipeline infrastructure.
 
 ---
 
 ## Version History
 
-**v1.0 - 11-22-2025 (Prompts 1-4 Complete)**
+**v1.1 - 11-28-2025 (Prompts 5-8 Documented)**
+- Updated documentation to reflect Prompts 5-8 implementation
+- Added usage examples for validation, profiling, parallel execution, error handling
+- Clarified test coverage status (45 tests for 1-4, tests needed for 5-8)
+- Updated "Future Work" to exclude implemented prompts
+
+**v1.0 - 11-27-2025 (Prompts 5-8 Implementation)**
+- Stage output validation (validation.py - 352 lines)
+- Performance monitoring and profiling (profiling.py - 366 lines)
+- Parallel execution and resource management (parallel.py - 346 lines)
+- Error handling and fault tolerance (error_handling.py - 360 lines)
+- All components exported in __init__.py
+- **Tests needed** for Prompts 5-8
+
+**v0.9 - 11-22-2025 (Prompts 1-4 Complete)**
 - Pipeline orchestration with stage abstraction
 - YAML configuration management and validation
 - Experiment tracking and registry
@@ -419,5 +680,5 @@ These are planned for future phases but not required for basic pipeline function
 ---
 
 **Document Maintained By:** Builder Agent
-**Last Review:** 11-22-2025
-**Status:** Phase 5 (Prompts 1-4) production-ready
+**Last Review:** 11-28-2025
+**Status:** Phase 5 (Prompts 1-8) implementation complete, tests needed for 5-8

@@ -30,6 +30,7 @@ env.bak/
 # Output / data
 *.json
 *.txt
+!requirements.txt
 results/
 graphs/
 
