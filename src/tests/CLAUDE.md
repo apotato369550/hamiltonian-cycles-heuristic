@@ -3,8 +3,9 @@
 ## Purpose
 Comprehensive test coverage for TSP research platform. Validates correctness, performance, and edge cases across all phases.
 
-**Total Tests**: 375+
-**Pass Rate**: 100% (validated 11-22-2025)
+**Total Tests**: 375 (Phases 1-4 and Phase 5 Prompts 1-4)
+**Missing Tests**: ~50 tests needed for Phase 5 Prompts 5-8 (implementation complete 11-27-2025)
+**Pass Rate**: 100% for all existing tests (validated 11-22-2025)
 **Organization**: One consolidated file per phase for better maintainability
 
 ---
@@ -31,17 +32,18 @@ Comprehensive test coverage for TSP research platform. Validates correctness, pe
 
 ## Test Organization
 
-**Updated 11-22-2025:** Tests consolidated to one file per phase. Phase 5 tests added.
+**Updated 11-28-2025:** Tests needed for Phase 5 Prompts 5-8 (validation, profiling, parallel, error handling).
 
 ```
 tests/
 ├── CLAUDE.md                         # This file
 ├── __init__.py                       # Test package init
-├── test_graph_generators.py          # Phase 1 (34 tests) ✅ No changes
-├── test_phase2_algorithms.py         # Phase 2 (89 tests) ⭐ Consolidated
-├── test_phase3_features.py           # Phase 3 (111 tests) ⭐ Consolidated
-├── test_phase4_ml.py                 # Phase 4 (96 tests) ⭐ Prompts 1-8
-└── test_phase5_pipeline.py           # Phase 5 (45 tests) ⭐ NEW - Prompts 1-4
+├── test_graph_generators.py          # Phase 1 (34 tests) ✅ Complete
+├── test_phase2_algorithms.py         # Phase 2 (89 tests) ✅ Complete
+├── test_phase3_features.py           # Phase 3 (111 tests) ✅ Complete
+├── test_phase4_ml.py                 # Phase 4 (96 tests) ✅ Complete (Prompts 1-8)
+└── test_phase5_pipeline.py           # Phase 5 (45 tests) ⚠️ Incomplete (Prompts 1-4 only)
+                                      #         Need ~50 tests for Prompts 5-8
 ```
 
 **Legacy files removed** (11-13-2025):
@@ -313,13 +315,13 @@ python3 -m unittest src.tests.test_phase4_ml.TestLinearRegressionModel -v
 
 ---
 
-## Phase 5: Pipeline Integration Tests (Prompts 1-4)
+## Phase 5: Pipeline Integration Tests
 
-**File**: `test_phase5_pipeline.py` (NEW - Added 11-22-2025)
+**File**: `test_phase5_pipeline.py` (NEW - Added 11-22-2025, updated 11-28-2025)
 
-**Status**: Prompts 1-4 implemented and tested
+**Status**: Prompts 1-4 tested (45 tests), Prompts 5-8 implementation complete but tests needed
 
-### Test Classes (9 classes, 45 tests total)
+### Test Classes - Implemented (9 classes, 45 tests total for Prompts 1-4)
 
 **Pipeline Orchestration Tests** (`TestPipelineStage`, `TestPipelineOrchestrator` - 9 tests):
 - Stage initialization and execution
@@ -354,9 +356,9 @@ python3 -m unittest src.tests.test_phase4_ml.TestLinearRegressionModel -v
 - Git commit tracking
 - Environment verification
 
-**Total Phase 5 Tests**: 45 tests (Prompts 1-4 complete)
+**Total Phase 5 Tests**: 45 tests for Prompts 1-4 (Prompts 5-8 need tests)
 
-**Key Coverage**:
+**Key Coverage (Prompts 1-4)**:
 - ✓ Pipeline orchestration with resumability
 - ✓ YAML configuration management and validation
 - ✓ Experiment tracking and metadata
@@ -365,9 +367,40 @@ python3 -m unittest src.tests.test_phase4_ml.TestLinearRegressionModel -v
 - ✓ Environment tracking (Python, packages, OS)
 - ✓ Git versioning and reproducibility checks
 
+### Test Classes - Needed (~50 tests for Prompts 5-8)
+
+**Validation Tests** (`TestStageValidator` - ~12 tests needed):
+- Graph generation output validation
+- Benchmarking output validation
+- Feature extraction output validation
+- Model training output validation
+- Validation error handling
+
+**Profiling Tests** (`TestPerformanceMonitor`, `TestRuntimeProfiler` - ~12 tests needed):
+- Performance metric tracking
+- Memory monitoring
+- Runtime profiling
+- Decorator-based profiling
+- Statistics generation
+
+**Parallel Execution Tests** (`TestParallelExecutor`, `TestResourceManager` - ~12 tests needed):
+- Parallel graph generation
+- Parallel benchmarking
+- Parallel feature extraction
+- Resource management and limits
+- Worker pool management
+
+**Error Handling Tests** (`TestErrorHandler`, `TestCheckpoint` - ~14 tests needed):
+- Error recording and tracking
+- Retry with backoff decorator
+- Try-continue pattern
+- Graceful degradation
+- Checkpoint save/resume
+- Error summary generation
+
 **Dependencies**:
 - Core dependencies only (no ML packages required)
-- Uses Python stdlib + numpy
+- Uses Python stdlib + numpy + psutil
 
 **Run Phase 5 Tests**:
 ```bash
@@ -387,12 +420,13 @@ python3 -m unittest src.tests.test_phase5_pipeline -v
 
 ---
 
-**Test Suite Version**: 6.0 (Phase 5 Prompts 1-4 added)
-**Last Updated**: 11-22-2025
-**Status**: All tests passing (375+/375+)
-**Note**: Phase 3 and Phase 4 require pandas/scikit-learn
+**Test Suite Version**: 6.1 (Phase 5 Prompts 5-8 tests needed)
+**Last Updated**: 11-28-2025
+**Status**: 375/~425 tests passing (Prompts 5-8 implementation complete, tests needed)
+**Note**: Phase 3 and Phase 4 require pandas/scikit-learn; Phase 5 requires psutil
 
 **Changelog**:
+- v6.1 (11-28-2025): Updated docs for Phase 5 Prompts 5-8 (implementation complete, ~50 tests needed)
 - v6.0 (11-22-2025): Added Phase 5 Prompts 1-4 tests (45 tests) - Pipeline integration
 - v5.0 (11-17-2025): Added Phase 4 Prompts 1-8 tests (96 tests), fixed test bugs
 - v4.1 (11-17-2025): Removed test_phase3_integration.py to reduce confusion, labeling bug fixes
