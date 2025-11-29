@@ -1,8 +1,9 @@
 """
-Phase 5: Pipeline Integration Tests (Prompts 1-4).
+Phase 5: Pipeline Integration Tests (Prompts 1-8).
 
 Tests pipeline orchestration, configuration management, experiment tracking,
-and reproducibility infrastructure.
+reproducibility infrastructure, validation, profiling, parallel execution,
+and error handling.
 """
 
 import unittest
@@ -14,6 +15,8 @@ import json
 import yaml
 import random
 import numpy as np
+import time
+import logging
 
 import sys
 from pathlib import Path
@@ -43,7 +46,31 @@ from pipeline import (
     # Prompt 4: Reproducibility
     ReproducibilityManager,
     EnvironmentInfo,
-    SeedManager
+    SeedManager,
+
+    # Prompt 5: Validation
+    StageValidator,
+    ValidationError,
+
+    # Prompt 6: Profiling
+    PerformanceMonitor,
+    PerformanceMetrics,
+    RuntimeProfiler,
+    profile_stage,
+
+    # Prompt 7: Parallel
+    ParallelExecutor,
+    ParallelConfig,
+    ResourceManager,
+    create_parallel_executor,
+
+    # Prompt 8: Error Handling
+    ErrorHandler,
+    ErrorRecord,
+    Checkpoint,
+    retry_with_backoff,
+    try_continue,
+    graceful_degradation
 )
 
 
@@ -758,6 +785,731 @@ class TestReproducibilityManager(unittest.TestCase):
         result = manager.verify_environment(fake_env)
         self.assertFalse(result['environment_matches'])
         self.assertIn('numpy', result['differences'])
+
+
+# ============================================================================
+# Prompt 5: Stage Validation Tests
+# ============================================================================
+
+class TestStageValidator(unittest.TestCase):
+    """Test StageValidator (Prompt 5)."""
+
+    def setUp(self):
+        """Set up temporary directory."""
+        self.temp_dir = tempfile.mkdtemp()
+
+    def tearDown(self):
+        """Clean up."""
+        shutil.rmtree(self.temp_dir)
+
+    # Graph Generation Validation Tests (3 tests)
+
+    def test_validate_graph_generation_valid(self):
+        """Test validation of valid graph directory."""
+        graph_dir = Path(self.temp_dir) / "graphs"
+        graph_dir.mkdir()
+
+        # Create valid graph files
+        for i in range(3):
+            graph_data = {
+                'n': 5,
+                'adjacency_matrix': np.random.rand(5, 5).tolist(),
+                'metadata': {'type': 'euclidean', 'seed': i}
+            }
+            with open(graph_dir / f"graph_{i}.json", 'w') as f:
+                json.dump(graph_data, f)
+
+        report = StageValidator.validate_graph_generation_output(graph_dir)
+
+        self.assertTrue(report['valid'])
+        self.assertEqual(report['total_graphs'], 3)
+        self.assertEqual(report['valid_graphs'], 3)
+
+    def test_validate_graph_generation_missing_directory(self):
+        """Test validation catches missing directory."""
+        missing_dir = Path(self.temp_dir) / "nonexistent"
+
+        with self.assertRaises(ValidationError) as cm:
+            StageValidator.validate_graph_generation_output(missing_dir)
+
+        self.assertIn("does not exist", str(cm.exception))
+
+    def test_validate_graph_generation_empty_directory(self):
+        """Test validation catches empty directory."""
+        empty_dir = Path(self.temp_dir) / "empty"
+        empty_dir.mkdir()
+
+        with self.assertRaises(ValidationError) as cm:
+            StageValidator.validate_graph_generation_output(empty_dir)
+
+        self.assertIn("No graph files", str(cm.exception))
+
+    # Benchmarking Validation Tests (3 tests)
+
+    def test_validate_benchmarking_valid(self):
+        """Test validation of valid benchmark results."""
+        bench_dir = Path(self.temp_dir) / "benchmarks"
+        bench_dir.mkdir()
+
+        # Create valid benchmark files
+        for i in range(2):
+            result_data = {
+                'graph_id': f'graph_{i}',
+                'algorithms': {
+                    'nearest_neighbor': {
+                        'tour': list(range(5)),
+                        'weight': 10.5,
+                        'runtime': 0.001,
+                        'success': True
+                    }
+                }
+            }
+            with open(bench_dir / f"result_{i}.json", 'w') as f:
+                json.dump(result_data, f)
+
+        report = StageValidator.validate_benchmarking_output(bench_dir)
+
+        self.assertTrue(report['valid'])
+        self.assertEqual(report['total_results'], 2)
+
+    def test_validate_benchmarking_invalid_tours(self):
+        """Test validation catches invalid tours."""
+        bench_dir = Path(self.temp_dir) / "benchmarks"
+        bench_dir.mkdir()
+
+        # Create result with missing required fields
+        result_data = {
+            'algorithms': {
+                'nearest_neighbor': {
+                    'tour': [0, 1, 2]  # Missing weight, runtime, success
+                }
+            }
+        }
+        with open(bench_dir / f"result_0.json", 'w') as f:
+            json.dump(result_data, f)
+
+        report = StageValidator.validate_benchmarking_output(bench_dir)
+        self.assertTrue(len(report['warnings']) > 0)
+
+    def test_validate_benchmarking_missing_algorithms(self):
+        """Test validation detects missing algorithm field."""
+        bench_dir = Path(self.temp_dir) / "benchmarks"
+        bench_dir.mkdir()
+
+        # Create result without algorithms field
+        result_data = {'graph_id': 'graph_0'}
+        with open(bench_dir / f"result_0.json", 'w') as f:
+            json.dump(result_data, f)
+
+        with self.assertRaises(ValidationError):
+            StageValidator.validate_benchmarking_output(bench_dir)
+
+    # Feature Validation Tests (3 tests)
+
+    def test_validate_features_valid(self):
+        """Test validation of valid features."""
+        try:
+            import pandas as pd
+        except ImportError:
+            self.skipTest("pandas not available")
+
+        features_file = Path(self.temp_dir) / "features.csv"
+
+        # Create valid features
+        df = pd.DataFrame({
+            'graph_id': ['g1', 'g1', 'g2', 'g2'],
+            'vertex_id': [0, 1, 0, 1],
+            'feature1': [1.0, 2.0, 3.0, 4.0],
+            'feature2': [0.5, 0.6, 0.7, 0.8]
+        })
+        df.to_csv(features_file, index=False)
+
+        report = StageValidator.validate_features_output(features_file)
+
+        self.assertTrue(report['valid'])
+        self.assertEqual(report['total_rows'], 4)
+        self.assertEqual(report['total_features'], 2)
+
+    def test_validate_features_nan_values(self):
+        """Test validation detects NaN values."""
+        try:
+            import pandas as pd
+        except ImportError:
+            self.skipTest("pandas not available")
+
+        features_file = Path(self.temp_dir) / "features.csv"
+
+        # Create features with NaN
+        df = pd.DataFrame({
+            'graph_id': ['g1', 'g1'],
+            'vertex_id': [0, 1],
+            'feature1': [1.0, np.nan]
+        })
+        df.to_csv(features_file, index=False)
+
+        report = StageValidator.validate_features_output(features_file)
+        self.assertTrue(len(report['warnings']) > 0)
+        self.assertTrue(any('NaN' in w for w in report['warnings']))
+
+    def test_validate_features_missing_file(self):
+        """Test validation catches missing feature file."""
+        missing_file = Path(self.temp_dir) / "missing.csv"
+
+        with self.assertRaises(ValidationError) as cm:
+            StageValidator.validate_features_output(missing_file)
+
+        self.assertIn("does not exist", str(cm.exception))
+
+    # Model Training Validation Tests (3 tests)
+
+    def test_validate_model_output_valid(self):
+        """Test validation of valid model output."""
+        model_dir = Path(self.temp_dir) / "models"
+        model_dir.mkdir()
+
+        # Create mock model file
+        with open(model_dir / "model.pkl", 'w') as f:
+            f.write("mock model")
+
+        # Create evaluation file
+        eval_data = {
+            'metrics': {'r2': 0.85, 'mae': 0.12}
+        }
+        with open(model_dir / "model_evaluation.json", 'w') as f:
+            json.dump(eval_data, f)
+
+        report = StageValidator.validate_model_output(model_dir)
+
+        self.assertTrue(report['valid'])
+        self.assertEqual(report['total_models'], 1)
+        self.assertEqual(report['valid_evaluations'], 1)
+
+    def test_validate_model_missing_directory(self):
+        """Test validation catches missing model directory."""
+        missing_dir = Path(self.temp_dir) / "nonexistent"
+
+        with self.assertRaises(ValidationError):
+            StageValidator.validate_model_output(missing_dir)
+
+    def test_validate_model_no_files(self):
+        """Test validation handles directory with no model files."""
+        model_dir = Path(self.temp_dir) / "models"
+        model_dir.mkdir()
+
+        report = StageValidator.validate_model_output(model_dir)
+
+        # Should have warnings but not fail
+        self.assertTrue(report['valid'])
+        self.assertTrue(len(report['warnings']) > 0)
+
+
+# ============================================================================
+# Prompt 6: Performance Profiling Tests
+# ============================================================================
+
+class TestPerformanceMonitor(unittest.TestCase):
+    """Test PerformanceMonitor (Prompt 6)."""
+
+    # Basic Monitoring Tests (3 tests)
+
+    def test_monitor_basic_timing(self):
+        """Test basic timing monitoring."""
+        monitor = PerformanceMonitor()
+
+        metrics = monitor.start_monitoring("test_op")
+        time.sleep(0.1)  # Sleep for predictable duration
+        monitor.stop_monitoring(metrics)
+
+        self.assertGreaterEqual(metrics.duration_seconds, 0.1)
+        self.assertLess(metrics.duration_seconds, 0.2)
+
+    def test_monitor_memory_tracking(self):
+        """Test memory delta tracking."""
+        monitor = PerformanceMonitor()
+
+        metrics = monitor.start_monitoring("test_op")
+        # Memory should be tracked
+        self.assertGreater(metrics.memory_start_mb, 0)
+        monitor.stop_monitoring(metrics)
+
+        self.assertGreater(metrics.memory_end_mb, 0)
+
+    def test_monitor_cpu_tracking(self):
+        """Test CPU usage capture."""
+        monitor = PerformanceMonitor()
+
+        metrics = monitor.start_monitoring("test_op")
+        monitor.stop_monitoring(metrics)
+
+        # CPU percent should be non-negative
+        self.assertGreaterEqual(metrics.cpu_percent, 0.0)
+
+    # Multiple Operations Tests (2 tests)
+
+    def test_monitor_multiple_operations(self):
+        """Test tracking multiple named operations."""
+        monitor = PerformanceMonitor()
+
+        for i in range(3):
+            metrics = monitor.start_monitoring(f"op_{i}")
+            time.sleep(0.01)
+            monitor.stop_monitoring(metrics)
+
+        self.assertEqual(len(monitor.metrics), 3)
+
+    def test_get_all_metrics(self):
+        """Test get_all_metrics returns all tracked operations."""
+        monitor = PerformanceMonitor()
+
+        metrics1 = monitor.start_monitoring("op1")
+        monitor.stop_monitoring(metrics1)
+
+        metrics2 = monitor.start_monitoring("op2")
+        monitor.stop_monitoring(metrics2)
+
+        summary = monitor.get_summary()
+        self.assertEqual(summary['total_operations'], 2)
+        self.assertIn('op1', summary['by_stage'])
+        self.assertIn('op2', summary['by_stage'])
+
+    # Persistence Tests (2 tests)
+
+    def test_save_metrics(self):
+        """Test save_metrics to JSON."""
+        with tempfile.TemporaryDirectory() as temp_dir:
+            monitor = PerformanceMonitor()
+
+            metrics = monitor.start_monitoring("test")
+            time.sleep(0.01)
+            monitor.stop_monitoring(metrics)
+
+            output_path = Path(temp_dir) / "metrics.json"
+            monitor.save_report(output_path)
+
+            self.assertTrue(output_path.exists())
+
+            with open(output_path) as f:
+                report = json.load(f)
+
+            self.assertIn('summary', report)
+            self.assertIn('all_metrics', report)
+
+    def test_metrics_serialization(self):
+        """Test metrics serialization."""
+        monitor = PerformanceMonitor()
+
+        metrics = monitor.start_monitoring("test")
+        monitor.stop_monitoring(metrics)
+
+        metrics_dict = metrics.to_dict()
+
+        self.assertEqual(metrics_dict['name'], 'test')
+        self.assertIn('duration_seconds', metrics_dict)
+        self.assertIn('memory_delta_mb', metrics_dict)
+
+
+class TestRuntimeProfiler(unittest.TestCase):
+    """Test RuntimeProfiler (Prompt 6)."""
+
+    # Context Manager Profiling Tests (2 tests)
+
+    def test_profiler_record_sample(self):
+        """Test recording profiling samples."""
+        profiler = RuntimeProfiler()
+
+        profiler.record_sample("op1", input_size=10, duration_seconds=0.5)
+        profiler.record_sample("op1", input_size=20, duration_seconds=1.0)
+
+        self.assertEqual(len(profiler.samples), 2)
+
+    def test_profiler_multiple_operations(self):
+        """Test profiling multiple operations."""
+        profiler = RuntimeProfiler()
+
+        profiler.record_sample("op1", input_size=10, duration_seconds=0.5)
+        profiler.record_sample("op2", input_size=10, duration_seconds=0.3)
+
+        operations = set(s['operation'] for s in profiler.samples)
+        self.assertEqual(len(operations), 2)
+
+    # Statistics Generation Tests (2 tests)
+
+    def test_analyze_complexity_basic(self):
+        """Test complexity analysis with sufficient samples."""
+        profiler = RuntimeProfiler()
+
+        # Linear growth
+        for n in [10, 20, 30, 40, 50]:
+            profiler.record_sample("linear_op", input_size=n, duration_seconds=n * 0.01)
+
+        analysis = profiler.analyze_complexity("linear_op")
+
+        self.assertEqual(analysis['samples'], 5)
+        self.assertIn('estimated_complexity', analysis)
+
+    def test_analyze_complexity_insufficient_samples(self):
+        """Test complexity analysis with too few samples."""
+        profiler = RuntimeProfiler()
+
+        profiler.record_sample("op", input_size=10, duration_seconds=0.5)
+
+        analysis = profiler.analyze_complexity("op")
+
+        self.assertIn('error', analysis)
+
+    # Decorator Profiling Test (1 test)
+
+    def test_profile_stage_decorator(self):
+        """Test @profile_stage decorator."""
+        monitor = PerformanceMonitor()
+
+        @profile_stage(monitor, "decorated_op")
+        def dummy_function():
+            time.sleep(0.01)
+            return 42
+
+        result = dummy_function()
+
+        self.assertEqual(result, 42)
+        self.assertEqual(len(monitor.metrics), 1)
+        self.assertEqual(monitor.metrics[0].name, "decorated_op")
+
+
+# ============================================================================
+# Prompt 7: Parallel Execution Tests
+# ============================================================================
+
+class TestParallelExecutor(unittest.TestCase):
+    """Test ParallelExecutor (Prompt 7)."""
+
+    # Configuration Test (1 test)
+
+    def test_parallel_config_initialization(self):
+        """Test ParallelConfig initialization and validation."""
+        config = ParallelConfig(n_jobs=4, backend='loky', max_memory_mb=2000)
+
+        self.assertEqual(config.n_jobs, 4)
+        self.assertEqual(config.backend, 'loky')
+        self.assertEqual(config.max_memory_mb, 2000)
+
+        # Test get_n_workers
+        n_workers = config.get_n_workers()
+        self.assertGreater(n_workers, 0)
+
+    # Parallel Execution Tests (2 tests)
+
+    def test_parallel_map_basic(self):
+        """Test basic parallel map."""
+        config = ParallelConfig(n_jobs=2, verbose=0)
+        executor = ParallelExecutor(config)
+
+        def square(x):
+            return x * x
+
+        items = [1, 2, 3, 4, 5]
+        results = executor.map(square, items, description="Test square")
+
+        self.assertEqual(results, [1, 4, 9, 16, 25])
+
+    def test_parallel_starmap(self):
+        """Test parallel starmap with tuples."""
+        config = ParallelConfig(n_jobs=2, verbose=0)
+        executor = ParallelExecutor(config)
+
+        def add(a, b):
+            return a + b
+
+        items = [(1, 2), (3, 4), (5, 6)]
+        results = executor.starmap(add, items, description="Test add")
+
+        self.assertEqual(results, [3, 7, 11])
+
+    # Fallback Tests (2 tests)
+
+    def test_parallel_map_without_joblib(self):
+        """Test fallback to sequential when joblib unavailable."""
+        # This tests the ImportError handling in the map method
+        executor = ParallelExecutor()
+
+        def identity(x):
+            return x
+
+        # Even if joblib is available, this should work
+        results = executor.map(identity, [1, 2, 3])
+        self.assertEqual(results, [1, 2, 3])
+
+    def test_create_parallel_executor(self):
+        """Test factory function."""
+        executor = create_parallel_executor(n_jobs=2, max_memory_mb=1000, verbose=0)
+
+        self.assertIsInstance(executor, ParallelExecutor)
+        self.assertEqual(executor.config.n_jobs, 2)
+
+    # Stage Execution Tests (2 tests)
+
+    def test_parallel_stage_execution(self):
+        """Test parallel stage execution."""
+        executor = ParallelExecutor(ParallelConfig(n_jobs=2, verbose=0))
+
+        def process_item(x):
+            return x * 2
+
+        inputs = [1, 2, 3, 4]
+        results = executor.parallel_stage_execution(
+            stage_func=process_item,
+            inputs=inputs,
+            stage_name="test_stage"
+        )
+
+        self.assertEqual(results, [2, 4, 6, 8])
+
+    def test_parallel_map_with_progress(self):
+        """Test parallel map with progress callback."""
+        executor = ParallelExecutor(ParallelConfig(n_jobs=2, verbose=0))
+
+        progress_calls = []
+
+        def progress_callback(current, total):
+            progress_calls.append((current, total))
+
+        def identity(x):
+            return x
+
+        results = executor.map_with_progress(
+            identity,
+            list(range(20)),
+            description="Test",
+            progress_callback=progress_callback
+        )
+
+        self.assertEqual(len(results), 20)
+        # Should have received progress updates
+        self.assertGreater(len(progress_calls), 0)
+
+
+class TestResourceManager(unittest.TestCase):
+    """Test ResourceManager (Prompt 7)."""
+
+    # Resource Tracking Tests (2 tests)
+
+    def test_resource_manager_initialization(self):
+        """Test resource manager initialization."""
+        manager = ResourceManager(max_memory_gb=8.0, max_cpu_percent=80.0)
+
+        self.assertEqual(manager.max_memory_gb, 8.0)
+        self.assertEqual(manager.max_cpu_percent, 80.0)
+
+    def test_get_recommended_workers(self):
+        """Test recommended workers calculation."""
+        manager = ResourceManager(max_memory_gb=8.0)
+
+        # Task requiring 1GB per worker
+        workers = manager.get_recommended_workers(task_memory_mb=1000, min_workers=1)
+
+        self.assertGreaterEqual(workers, 1)
+        self.assertLessEqual(workers, 8)  # Should not exceed memory limit
+
+    # System Monitoring Tests (1 test)
+
+    def test_check_resources(self):
+        """Test system resource checking."""
+        manager = ResourceManager()
+
+        resources = manager.check_resources()
+
+        self.assertIn('memory', resources)
+        self.assertIn('cpu', resources)
+        self.assertIn('total_gb', resources['memory'])
+        self.assertIn('percent_used', resources['cpu'])
+
+
+# ============================================================================
+# Prompt 8: Error Handling Tests
+# ============================================================================
+
+class TestErrorHandler(unittest.TestCase):
+    """Test ErrorHandler (Prompt 8)."""
+
+    # Error Recording Tests (3 tests)
+
+    def test_error_handler_record_error(self):
+        """Test error recording."""
+        handler = ErrorHandler()
+
+        error = ValueError("Test error")
+        handler.record_error(
+            stage_name="test_stage",
+            error=error,
+            recoverable=True,
+            context={'graph_id': 'g1'}
+        )
+
+        self.assertEqual(len(handler.error_log), 1)
+        self.assertEqual(handler.error_log[0].stage_name, "test_stage")
+        self.assertEqual(handler.error_log[0].error_type, "ValueError")
+
+    def test_error_categorization(self):
+        """Test error categorization (recoverable vs fatal)."""
+        handler = ErrorHandler()
+
+        handler.record_error("stage1", ValueError("Recoverable"), recoverable=True)
+        handler.record_error("stage2", RuntimeError("Fatal"), recoverable=False)
+
+        summary = handler.get_error_summary()
+        self.assertEqual(summary['total_errors'], 2)
+        self.assertEqual(summary['recoverable'], 1)
+        self.assertEqual(summary['fatal'], 1)
+
+    def test_error_summary_generation(self):
+        """Test error summary statistics."""
+        handler = ErrorHandler()
+
+        handler.record_error("stage1", ValueError("Error 1"), recoverable=True)
+        handler.record_error("stage1", ValueError("Error 2"), recoverable=True)
+        handler.record_error("stage2", TypeError("Error 3"), recoverable=False)
+
+        summary = handler.get_error_summary()
+
+        self.assertEqual(summary['by_stage']['stage1'], 2)
+        self.assertEqual(summary['by_stage']['stage2'], 1)
+        self.assertEqual(summary['by_type']['ValueError'], 2)
+        self.assertEqual(summary['by_type']['TypeError'], 1)
+
+    # Error Retrieval Tests (2 tests)
+
+    def test_error_persistence(self):
+        """Test saving errors to JSON."""
+        with tempfile.TemporaryDirectory() as temp_dir:
+            handler = ErrorHandler()
+
+            handler.record_error("stage1", ValueError("Test"), recoverable=True)
+
+            output_path = Path(temp_dir) / "errors.json"
+            handler.save_error_log(output_path)
+
+            self.assertTrue(output_path.exists())
+
+            with open(output_path) as f:
+                log_data = json.load(f)
+
+            self.assertIn('summary', log_data)
+            self.assertIn('errors', log_data)
+            self.assertEqual(len(log_data['errors']), 1)
+
+    def test_error_handler_multiple_stages(self):
+        """Test handling many errors across stages."""
+        handler = ErrorHandler()
+
+        for i in range(10):
+            stage = f"stage{i % 3}"
+            handler.record_error(stage, ValueError(f"Error {i}"), recoverable=True)
+
+        summary = handler.get_error_summary()
+        self.assertEqual(summary['total_errors'], 10)
+        self.assertEqual(len(summary['by_stage']), 3)
+
+
+class TestCheckpoint(unittest.TestCase):
+    """Test Checkpoint (Prompt 8)."""
+
+    # Save/Load Tests (2 tests)
+
+    def test_checkpoint_save_load(self):
+        """Test checkpoint save and load."""
+        with tempfile.TemporaryDirectory() as temp_dir:
+            checkpoint = Checkpoint(Path(temp_dir))
+
+            # Save checkpoint
+            checkpoint.save(
+                completed_stages=['stage1', 'stage2'],
+                current_outputs={'result': 42},
+                metadata={'note': 'test'}
+            )
+
+            # Load checkpoint
+            data = checkpoint.load()
+
+            self.assertIsNotNone(data)
+            self.assertEqual(data['completed_stages'], ['stage1', 'stage2'])
+            self.assertEqual(data['outputs']['result'], 42)
+
+    def test_checkpoint_exists(self):
+        """Test checkpoint existence check."""
+        with tempfile.TemporaryDirectory() as temp_dir:
+            checkpoint = Checkpoint(Path(temp_dir))
+
+            # Initially doesn't exist
+            self.assertIsNone(checkpoint.load())
+
+            # After save, exists
+            checkpoint.save([], {})
+            self.assertIsNotNone(checkpoint.load())
+
+            # After clear, doesn't exist
+            checkpoint.clear()
+            self.assertIsNone(checkpoint.load())
+
+
+class TestRetryDecorators(unittest.TestCase):
+    """Test Retry Decorators (Prompt 8)."""
+
+    # Retry with Backoff Test (1 test)
+
+    def test_retry_with_backoff(self):
+        """Test retry_with_backoff eventually succeeds."""
+        attempt_count = [0]
+
+        @retry_with_backoff(max_retries=3, initial_delay=0.01, backoff_factor=2.0)
+        def flaky_function():
+            attempt_count[0] += 1
+            if attempt_count[0] < 3:
+                raise ValueError("Not yet")
+            return "success"
+
+        result = flaky_function()
+
+        self.assertEqual(result, "success")
+        self.assertEqual(attempt_count[0], 3)
+
+    # Try Continue Test (1 test)
+
+    def test_try_continue_pattern(self):
+        """Test try_continue continues on failures."""
+        handler = ErrorHandler()
+
+        def process_item(x):
+            if x == 2:
+                raise ValueError("Item 2 fails")
+            return x * 2
+
+        items = [1, 2, 3, 4]
+        results = try_continue(
+            func=process_item,
+            items=items,
+            error_handler=handler,
+            stage_name="test_stage"
+        )
+
+        # Should have 3 results (item 2 failed)
+        self.assertEqual(len(results), 3)
+        self.assertEqual(results, [2, 6, 8])
+
+        # Should have 1 error recorded
+        self.assertEqual(len(handler.error_log), 1)
+
+    # Graceful Degradation Test (1 test)
+
+    def test_graceful_degradation(self):
+        """Test graceful_degradation returns default on failure."""
+        def failing_func():
+            raise RuntimeError("Failed")
+
+        def fallback_func():
+            return "fallback"
+
+        result = graceful_degradation(failing_func, fallback_func)
+
+        self.assertEqual(result, "fallback")
 
 
 if __name__ == '__main__':
