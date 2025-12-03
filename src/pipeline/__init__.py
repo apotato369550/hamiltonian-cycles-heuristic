@@ -70,6 +70,23 @@ from .error_handling import (
     graceful_degradation
 )
 
+# Analysis and Visualization (New Integration Components)
+from .test_results_summary import (
+    TestResultsSummarizer,
+    TestSummary,
+    Observation,
+    TestStatus,
+    summarize_test_results
+)
+
+from .analysis import (
+    ExperimentAnalyzer
+)
+
+from .visualization import (
+    ExperimentVisualizer
+)
+
 __all__ = [
     # Orchestrator
     'PipelineStage',
@@ -118,5 +135,14 @@ __all__ = [
     'Checkpoint',
     'retry_with_backoff',
     'try_continue',
-    'graceful_degradation'
+    'graceful_degradation',
+
+    # Analysis and Visualization (Integration Components)
+    'TestResultsSummarizer',
+    'TestSummary',
+    'Observation',
+    'TestStatus',
+    'summarize_test_results',
+    'ExperimentAnalyzer',
+    'ExperimentVisualizer'
 ]
