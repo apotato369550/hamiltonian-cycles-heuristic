@@ -1,8 +1,9 @@
 # Pipeline Integration Module (Phase 5)
 
-**Status:** Prompts 1-8 Complete (Implementation), Tests Needed for 5-8
-**Last Updated:** 11-28-2025
+**Status:** Prompts 1-8 Complete (Implementation + CLI Integration), Tests Needed for 5-8
+**Last Updated:** 12-05-2025
 **Test Coverage:** 45 tests for Prompts 1-4, implementation complete for Prompts 5-8
+**CLI:** `experiments/run_experiment.py` - Ready for end-to-end experiments
 
 ---
 
@@ -642,6 +643,173 @@ if checkpoint.exists():
 
 ---
 
+## End-to-End Usage Examples
+
+### Running Complete Experiments via CLI
+
+The primary way to use the pipeline is through the CLI entry point:
+
+```bash
+# Run complete experiment
+python experiments/run_experiment.py config/complete_experiment_template.yaml
+
+# Validate configuration without running
+python experiments/run_experiment.py config/my_config.yaml --dry-run
+
+# Run single stage
+python experiments/run_experiment.py config/my_config.yaml --stage graph_generation
+
+# Quick test with small config
+python experiments/run_experiment.py config/test_config_small.yaml
+```
+
+**See `experiments/README.md` for complete CLI documentation.**
+
+### Programmatic Pipeline Usage
+
+For custom experiments or research scripts:
+
+```python
+from pathlib import Path
+from pipeline import (
+    ExperimentConfig,
+    ExperimentTracker,
+    ReproducibilityManager,
+    PipelineOrchestrator,
+    PipelineStage
+)
+from pipeline.stages import (
+    create_graph_generation_stage,
+    create_benchmarking_stage,
+    create_feature_extraction_stage,
+    create_training_stage
+)
+
+# Load configuration
+config = ExperimentConfig.from_yaml("config/my_experiment.yaml")
+
+# Initialize experiment tracking
+tracker = ExperimentTracker(
+    experiment_id="exp_001",
+    name=config.experiment.name,
+    description=config.experiment.description,
+    config=config,
+    output_dir=Path("experiments/exp_001")
+)
+tracker.start()
+
+# Initialize reproducibility
+repro = ReproducibilityManager(
+    base_seed=config.experiment.random_seed,
+    output_dir=tracker.experiment_dir
+)
+repro.initialize()
+
+# Create orchestrator
+orchestrator = PipelineOrchestrator(
+    experiment_dir=tracker.experiment_dir,
+    registry=tracker.registry
+)
+
+# Add stages
+if config.graph_generation.enabled:
+    orchestrator.add_stage(create_graph_generation_stage(config, repro))
+
+if config.benchmarking.enabled:
+    orchestrator.add_stage(create_benchmarking_stage(config, repro))
+
+if config.feature_engineering.enabled:
+    orchestrator.add_stage(create_feature_extraction_stage(config, repro))
+
+if config.model_training.enabled:
+    orchestrator.add_stage(create_training_stage(config, repro))
+
+# Run pipeline
+try:
+    results = orchestrator.run()
+    tracker.complete(success=True, results={"stages": [r.to_dict() for r in results]})
+except Exception as e:
+    tracker.complete(success=False, error_message=str(e))
+    raise
+```
+
+### Custom Stage Integration
+
+Adding custom stages to the pipeline:
+
+```python
+from pipeline import PipelineStage, StageResult, StageStatus
+from datetime import datetime
+
+def my_custom_analysis(inputs):
+    """Custom analysis stage."""
+    result = StageResult("custom_analysis", StageStatus.RUNNING, datetime.now())
+
+    try:
+        # Get data from previous stages
+        graphs = inputs['graphs']
+        benchmarks = inputs['benchmarks']
+
+        # Perform analysis
+        analysis_results = analyze_performance(graphs, benchmarks)
+
+        # Save outputs
+        output_path = inputs['experiment_dir'] / 'analysis' / 'results.json'
+        output_path.parent.mkdir(parents=True, exist_ok=True)
+        save_results(analysis_results, output_path)
+
+        # Mark success
+        result.complete(StageStatus.COMPLETED, outputs={'analysis': analysis_results})
+        return result
+
+    except Exception as e:
+        result.complete(StageStatus.FAILED, error_message=str(e))
+        return result
+
+# Create stage
+custom_stage = PipelineStage(
+    name="custom_analysis",
+    execute_fn=my_custom_analysis,
+    required_inputs=['graphs', 'benchmarks', 'experiment_dir'],
+    output_keys=['analysis']
+)
+
+# Add to orchestrator
+orchestrator.add_stage(custom_stage)
+```
+
+### Configuration Examples
+
+**Minimal Configuration:**
+
+```yaml
+experiment:
+  name: quick_test
+  random_seed: 42
+
+graph_generation:
+  enabled: true
+  graph_types:
+    - type: euclidean
+      sizes: [20]
+      instances_per_size: 2
+
+benchmarking:
+  enabled: true
+  algorithms:
+    - {name: nearest_neighbor}
+```
+
+**Full Configuration:**
+
+See `config/complete_experiment_template.yaml` for all available options.
+
+**Configuration Reference:**
+
+See `/docs/experiment_configuration_guide.md` for complete field documentation.
+
+---
+
 ## Future Work (Prompts 9-12)
 
 **Not Implemented (Workflow Features):**
@@ -655,6 +823,14 @@ These are workflow usage features for consuming pipeline outputs, not core pipel
 ---
 
 ## Version History
+
+**v1.2 - 12-05-2025 (CLI Integration Complete)**
+- Added CLI entry point: `experiments/run_experiment.py`
+- Added stage factories in `src/pipeline/stages.py` integrating Phases 1-4
+- Added "End-to-End Usage Examples" section with CLI and programmatic usage
+- Added configuration templates and documentation references
+- Platform now ready for end-to-end experiments
+- All integration issues between Phase 5 and Phases 1-4 resolved
 
 **v1.1 - 11-28-2025 (Prompts 5-8 Documented)**
 - Updated documentation to reflect Prompts 5-8 implementation

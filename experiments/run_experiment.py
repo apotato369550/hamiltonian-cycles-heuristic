@@ -126,24 +126,58 @@ def main():
     print(f"Running pipeline with {len(stages)} stages")
     print(f"{'='*60}\n")
 
+    from pipeline.orchestrator import StageStatus
+
     if args.stage:
         # Run specific stage only
         print(f"Running stage: {args.stage}")
-        result = orchestrator.run_stage(args.stage, {})
+        results = orchestrator.run(
+            initial_inputs={},
+            start_from_stage=args.stage,
+            stop_at_stage=args.stage
+        )
     else:
         # Run complete pipeline
-        result = orchestrator.run()
+        results = orchestrator.run()
+
+    # Process results
+    all_completed = all(r.status == StageStatus.COMPLETED for r in results)
+    any_failed = any(r.status == StageStatus.FAILED for r in results)
+
+    # Compute experiment summary
+    summary = {
+        'total_stages': len(results),
+        'completed_stages': sum(1 for r in results if r.status == StageStatus.COMPLETED),
+        'failed_stages': sum(1 for r in results if r.status == StageStatus.FAILED),
+        'skipped_stages': sum(1 for r in results if r.status == StageStatus.SKIPPED),
+        'total_duration_seconds': sum(r.duration_seconds for r in results),
+        'stage_details': {r.stage_name: r.to_dict() for r in results}
+    }
 
     # Complete tracking
-    tracker.complete(status="success" if result.success else "failed")
+    if any_failed:
+        failed_stages = [r.stage_name for r in results if r.status == StageStatus.FAILED]
+        tracker.fail(f"Failed stages: {', '.join(failed_stages)}")
+        print(f"\n❌ Experiment failed at stages: {', '.join(failed_stages)}")
 
-    if not result.success:
-        print(f"\n❌ Pipeline failed")
-        if hasattr(result, 'error'):
-            print(f"Error: {result.error}")
+        # Print error details
+        for result in results:
+            if result.status == StageStatus.FAILED:
+                print(f"\n{result.stage_name} error: {result.error}")
+
         return 1
+    else:
+        tracker.complete(summary)
+        print(f"\n✓ Experiment completed successfully!")
+        print(f"Total duration: {summary['total_duration_seconds']:.2f}s")
+        print(f"Output directory: {output_dir}")
 
-    print(f"\n✓ Pipeline completed successfully")
+        # Save final results manifest
+        orchestrator.save_manifest()
+        repro_manager.save_reproducibility_info(output_dir / "reproducibility.json")
+
+        # Register experiment
+        registry.register(tracker.metadata)
 
     # Generate analysis if enabled
     if config.get('analysis.enabled', False):

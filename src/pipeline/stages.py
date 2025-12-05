@@ -10,10 +10,25 @@ This module bridges Phase 1-4 implementations with the Phase 5 orchestrator.
 from pathlib import Path
 from typing import Dict, Any, List
 import numpy as np
+import pickle
+import json
+from datetime import datetime
 
 from .orchestrator import PipelineStage, StageResult, StageStatus
 from .reproducibility import ReproducibilityManager
-from datetime import datetime
+
+# Optional imports with error handling
+try:
+    import pandas as pd
+    HAS_PANDAS = True
+except ImportError:
+    HAS_PANDAS = False
+
+try:
+    from sklearn.metrics import r2_score, mean_squared_error, mean_absolute_error
+    HAS_SKLEARN = True
+except ImportError:
+    HAS_SKLEARN = False
 
 
 def create_graph_generation_stage(
@@ -54,7 +69,7 @@ def create_graph_generation_stage(
         batch_name = gen_config.get('batch_name', 'default_batch')
 
         # Set seed for reproducibility
-        seed = repro_manager.propagate_seed('graph_generation')
+        seed = repro_manager.seed_manager.get_stage_seed('graph_generation')
 
         # Initialize storage
         storage = GraphStorage(str(output_dir / 'graphs'))
@@ -63,48 +78,80 @@ def create_graph_generation_stage(
         all_graphs = []
         all_paths = []
 
-        for graph_spec in gen_config.get('types', []):
+        # Handle both 'types' and 'graph_types' keys for compatibility
+        graph_types = gen_config.get('graph_types', gen_config.get('types', []))
+        for graph_spec in graph_types:
             graph_type = graph_spec['type']
 
             for size in graph_spec['sizes']:
                 for instance in range(graph_spec['instances_per_size']):
-                    # Create generator with seeded RNG
+                    instance_seed = seed + len(all_graphs)
+                    weight_range = tuple(graph_spec.get('weight_range', [1.0, 100.0]))
+
+                    # Generate graph based on type
                     if graph_type == 'euclidean':
-                        generator = EuclideanGraphGenerator(
-                            seed=seed + instance,
-                            dimension=graph_spec.get('dimension', 2)
+                        generator = EuclideanGraphGenerator(random_seed=instance_seed)
+                        adjacency_matrix, coordinates = generator.generate(
+                            num_vertices=size,
+                            dimensions=graph_spec.get('dimension', 2),
+                            weight_range=weight_range
+                        )
+                        # Create GraphInstance
+                        from graph_generation.graph_instance import GraphInstance
+                        graph = GraphInstance(
+                            adjacency_matrix=adjacency_matrix,
+                            metadata={
+                                'type': 'euclidean',
+                                'seed': instance_seed,
+                                'coordinates': coordinates
+                            }
                         )
                     elif graph_type == 'metric':
-                        generator = MetricGraphGenerator(
-                            seed=seed + instance,
+                        adjacency_matrix = generate_metric_graph(
+                            num_vertices=size,
+                            weight_range=weight_range,
+                            random_seed=instance_seed,
                             strategy=graph_spec.get('strategy', 'completion')
+                        )
+                        from graph_generation.graph_instance import GraphInstance
+                        graph = GraphInstance(
+                            adjacency_matrix=adjacency_matrix,
+                            metadata={'type': 'metric', 'seed': instance_seed}
                         )
                     elif graph_type == 'quasi_metric':
-                        generator = QuasiMetricGraphGenerator(
-                            seed=seed + instance,
-                            strategy=graph_spec.get('strategy', 'completion')
+                        adjacency_matrix = generate_quasi_metric_graph(
+                            num_vertices=size,
+                            weight_range=weight_range,
+                            random_seed=instance_seed
+                        )
+                        from graph_generation.graph_instance import GraphInstance
+                        graph = GraphInstance(
+                            adjacency_matrix=adjacency_matrix,
+                            metadata={'type': 'quasi_metric', 'seed': instance_seed}
                         )
                     elif graph_type == 'random':
-                        generator = RandomGraphGenerator(
-                            seed=seed + instance
+                        adjacency_matrix = generate_random_graph(
+                            num_vertices=size,
+                            weight_range=weight_range,
+                            random_seed=instance_seed,
+                            distribution=graph_spec.get('distribution', 'uniform')
+                        )
+                        from graph_generation.graph_instance import GraphInstance
+                        graph = GraphInstance(
+                            adjacency_matrix=adjacency_matrix,
+                            metadata={'type': 'random', 'seed': instance_seed}
                         )
                     else:
                         raise ValueError(f"Unknown graph type: {graph_type}")
-
-                    # Generate graph
-                    weight_range = tuple(graph_spec.get('weight_range', [1.0, 100.0]))
-                    graph = generator.generate(
-                        n_vertices=size,
-                        weight_range=weight_range
-                    )
 
                     # Save graph
                     path = storage.save_graph(graph, batch_name=batch_name)
                     all_graphs.append(graph)
                     all_paths.append(str(path))
 
-        # Save batch manifest
-        manifest_path = storage.save_batch_manifest(batch_name, all_paths)
+        # Export manifest for batch
+        manifest_path = output_dir / 'graphs' / f'{batch_name}_manifest.json'
+        storage.export_manifest(str(manifest_path))
 
         return StageResult(
             stage_name='graph_generation',
@@ -118,7 +165,7 @@ def create_graph_generation_stage(
             },
             metadata={
                 'batch_name': batch_name,
-                'graph_types': list(set(spec['type'] for spec in gen_config['types'])),
+                'graph_types': list(set(spec['type'] for spec in graph_types)),
                 'total_graphs': len(all_graphs),
                 'seed': seed
             }
@@ -160,7 +207,7 @@ def create_benchmarking_stage(
         - num_results: int
     """
     def execute(inputs: Dict[str, Any]) -> StageResult:
-        from algorithms import AlgorithmRegistry
+        from algorithms import get_algorithm  # Use Phase 2 registry
         from algorithms.storage import BenchmarkStorage
         from graph_generation import GraphStorage
         import time
@@ -185,7 +232,7 @@ def create_benchmarking_stage(
         bench_storage = BenchmarkStorage(str(output_dir / 'benchmarks'))
 
         # Set seed for reproducibility
-        seed = repro_manager.propagate_seed('benchmarking')
+        seed = repro_manager.seed_manager.get_stage_seed('benchmarking')
 
         all_results = []
 
@@ -200,11 +247,7 @@ def create_benchmarking_stage(
                 algo_params = algo_spec.get('params', {})
 
                 # Get algorithm from registry
-                algo = AlgorithmRegistry.get_algorithm(
-                    algo_name,
-                    random_seed=seed,
-                    **algo_params
-                )
+                algo = get_algorithm(algo_name, **algo_params)
 
                 if exhaustive_anchors and 'anchor' in algo_name:
                     # Test all possible anchors for labeling
@@ -336,12 +379,12 @@ def create_feature_extraction_stage(
     def execute(inputs: Dict[str, Any]) -> StageResult:
         from features import (
             FeatureExtractorPipeline,
-            WeightBasedExtractor,
-            TopologicalExtractor,
-            MSTBasedExtractor,
-            NeighborhoodExtractor,
-            HeuristicExtractor,
-            GraphContextExtractor,
+            WeightBasedFeatureExtractor,
+            TopologicalFeatureExtractor,
+            MSTFeatureExtractor,
+            NeighborhoodFeatureExtractor,
+            HeuristicFeatureExtractor,
+            GraphContextFeatureExtractor,
             AnchorQualityLabeler
         )
         import pandas as pd
@@ -351,9 +394,10 @@ def create_feature_extraction_stage(
         graphs = inputs['graphs']
         benchmark_results = inputs.get('benchmark_results', [])
 
-        # Extract config
-        feat_config = config.get('feature_extraction', {})
-        extractor_names = feat_config.get('extractors', ['weight_based'])
+        # Extract config (handle both 'feature_extraction' and 'feature_engineering')
+        feat_config = config.get('feature_extraction', config.get('feature_engineering', {}))
+        # Handle both 'extractors' and 'feature_groups' keys for compatibility
+        extractor_names = feat_config.get('extractors', feat_config.get('feature_groups', ['weight_based']))
         labeling_strategy = feat_config.get('labeling_strategy', 'rank_based')
         labeling_params = feat_config.get('labeling_params', {})
         output_format = feat_config.get('output_format', 'csv')
@@ -362,17 +406,17 @@ def create_feature_extraction_stage(
         pipeline = FeatureExtractorPipeline()
 
         if 'weight_based' in extractor_names:
-            pipeline.add_extractor(WeightBasedExtractor())
+            pipeline.add_extractor(WeightBasedFeatureExtractor())
         if 'topological' in extractor_names:
-            pipeline.add_extractor(TopologicalExtractor())
+            pipeline.add_extractor(TopologicalFeatureExtractor())
         if 'mst_based' in extractor_names:
-            pipeline.add_extractor(MSTBasedExtractor())
+            pipeline.add_extractor(MSTFeatureExtractor())
         if 'neighborhood' in extractor_names:
-            pipeline.add_extractor(NeighborhoodExtractor())
+            pipeline.add_extractor(NeighborhoodFeatureExtractor())
         if 'heuristic' in extractor_names:
-            pipeline.add_extractor(HeuristicExtractor())
+            pipeline.add_extractor(HeuristicFeatureExtractor())
         if 'graph_context' in extractor_names:
-            pipeline.add_extractor(GraphContextExtractor())
+            pipeline.add_extractor(GraphContextFeatureExtractor())
 
         # Extract features for all graphs
         all_features = []
@@ -524,14 +568,14 @@ def create_training_stage(
             y = data['labels']
             metadata = data.get('metadata', None)
 
-        # Extract config
-        train_config = config.get('training', {})
+        # Extract config (handle both 'training' and 'model_training')
+        train_config = config.get('training', config.get('model_training', {}))
         model_specs = train_config.get('models', [])
         test_split = train_config.get('test_split', 0.2)
         stratify_by = train_config.get('stratify_by', None)
 
         # Set seed for reproducibility
-        seed = repro_manager.propagate_seed('training')
+        seed = repro_manager.seed_manager.get_stage_seed('training')
 
         # Prepare dataset
         prep = DatasetPreparator(problem_type=MLProblemType.REGRESSION)
@@ -665,11 +709,11 @@ def create_evaluation_stage(
         import pickle
         import pandas as pd
         from features import FeatureExtractorPipeline
-        from algorithms import AlgorithmRegistry
-        from features.extractors import (
-            WeightBasedExtractor,
-            TopologicalExtractor,
-            MSTBasedExtractor
+        from algorithms import get_algorithm
+        from features import (
+            WeightBasedFeatureExtractor,
+            TopologicalFeatureExtractor,
+            MSTFeatureExtractor
         )
 
         # Load best model
@@ -685,14 +729,14 @@ def create_evaluation_stage(
         feat_config = config.get('feature_extraction', {})
         for extractor_name in feat_config.get('extractors', ['weight_based']):
             if extractor_name == 'weight_based':
-                pipeline.add_extractor(WeightBasedExtractor())
+                pipeline.add_extractor(WeightBasedFeatureExtractor())
             elif extractor_name == 'topological':
-                pipeline.add_extractor(TopologicalExtractor())
+                pipeline.add_extractor(TopologicalFeatureExtractor())
             elif extractor_name == 'mst_based':
-                pipeline.add_extractor(MSTBasedExtractor())
+                pipeline.add_extractor(MSTFeatureExtractor())
 
         # Set seed
-        seed = repro_manager.propagate_seed('evaluation')
+        seed = repro_manager.seed_manager.get_stage_seed('evaluation')
 
         results = []
 
@@ -707,14 +751,14 @@ def create_evaluation_stage(
             predicted_anchor = int(np.argmax(predictions))
 
             # Run algorithm with predicted anchor
-            algo = AlgorithmRegistry.get_algorithm('single_anchor', random_seed=seed)
+            algo = get_algorithm('single_anchor')
             predicted_result = algo.solve(
                 graph.adjacency_matrix,
                 anchor_vertex=predicted_anchor
             )
 
             # Compare to baselines
-            nn_algo = AlgorithmRegistry.get_algorithm('nearest_neighbor', random_seed=seed)
+            nn_algo = get_algorithm('nearest_neighbor')
             nn_result = nn_algo.solve(graph.adjacency_matrix)
 
             random_anchor = np.random.RandomState(seed).randint(0, graph.n_vertices)

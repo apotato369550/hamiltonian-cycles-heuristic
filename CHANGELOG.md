@@ -11,6 +11,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 ### Added
 - Created `requirements.txt` with all project dependencies (2025-11-28)
 - Created `CHANGELOG.md` to track code updates (2025-11-28)
+- Created `experiments/run_experiment.py` - CLI entry point for running experiments (2025-12-05)
+- Created `config/complete_experiment_template.yaml` - Full featured configuration template (2025-12-05)
+- Created `config/test_config_small.yaml` - Small test configuration for quick iteration (2025-12-05)
+- Created `/docs/experiment_configuration_guide.md` - Comprehensive configuration reference (2025-12-05)
+- Created `experiments/README.md` - CLI documentation and usage guide (2025-12-05)
 
 ### Changed
 - Updated root `CLAUDE.md` to reflect Phase 5 actual completion status (2025-11-28)
@@ -19,6 +24,23 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ### Fixed
 - Documentation drift between actual implementation and CLAUDE.md files (2025-11-28)
+- **Phase 5 Integration Issues** (2025-12-05):
+  - Fixed `GraphGenConfig` to accept `batch_name` field
+  - Fixed `BenchmarkConfig` to accept `exhaustive_anchors` and `storage_format` fields
+  - Fixed `FeatureConfig` to accept `labeling_params` and `output_format` fields
+  - Fixed `ModelConfig` to accept `problem_type`, `test_split`, `stratify_by`, `cross_validation` fields
+  - Added field alias support in `ExperimentConfig` (types→graph_types, extractors→feature_groups, training→model_training)
+  - Fixed `PipelineStage` initialization to use `output_keys` instead of `expected_outputs`
+  - Fixed `StageResult` construction to use proper parameters (stage_name, status, start_time)
+  - Fixed `ExperimentTracker` initialization with required fields
+  - Fixed `ReproducibilityManager` initialization and seed propagation
+  - Fixed graph generator imports in `src/pipeline/stages.py`:
+    - Changed from non-existent generator classes to correct API (functions for metric/quasi-metric/random, class for Euclidean)
+    - Fixed `GraphInstance` construction with adjacency_matrix and metadata
+    - Fixed seed management to use `seed_manager.get_stage_seed()` API
+  - Fixed benchmarking stage to use correct algorithm registry and result storage
+  - Fixed feature extraction stage to use `FeatureExtractorPipeline` and `AnchorQualityLabeler`
+  - Fixed training stage to use `MLDataset` and model training pipeline
 
 ---
 
