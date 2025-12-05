@@ -11,8 +11,9 @@ from pathlib import Path
 from typing import Dict, Any, List
 import numpy as np
 
-from .orchestrator import PipelineStage, StageResult
+from .orchestrator import PipelineStage, StageResult, StageStatus
 from .reproducibility import ReproducibilityManager
+from datetime import datetime
 
 
 def create_graph_generation_stage(
@@ -40,7 +41,13 @@ def create_graph_generation_stage(
         - num_graphs: int
     """
     def execute(inputs: Dict[str, Any]) -> StageResult:
-        from graph_generation import EuclideanGraphGenerator, MetricGraphGenerator, QuasiMetricGraphGenerator, RandomGraphGenerator, GraphStorage
+        from graph_generation import (
+            EuclideanGraphGenerator,
+            generate_metric_graph,
+            generate_quasi_metric_graph,
+            generate_random_graph,
+            GraphStorage
+        )
 
         # Extract config
         gen_config = config.get('graph_generation', {})
@@ -100,7 +107,9 @@ def create_graph_generation_stage(
         manifest_path = storage.save_batch_manifest(batch_name, all_paths)
 
         return StageResult(
-            success=True,
+            stage_name='graph_generation',
+            status=StageStatus.RUNNING,  # Will be set to COMPLETED by orchestrator
+            start_time=datetime.now(),
             outputs={
                 'graphs': all_graphs,
                 'graph_paths': all_paths,
@@ -119,7 +128,7 @@ def create_graph_generation_stage(
         name='graph_generation',
         execute_fn=execute,
         required_inputs=[],  # No upstream dependencies
-        expected_outputs=['graphs', 'graph_paths', 'batch_manifest', 'num_graphs']
+        output_keys=['graphs', 'graph_paths', 'batch_manifest', 'num_graphs']
     )
 
 
@@ -270,7 +279,9 @@ def create_benchmarking_stage(
         results_db_path = bench_storage.save_database()
 
         return StageResult(
-            success=True,
+            stage_name='benchmarking',
+            status=StageStatus.RUNNING,
+            start_time=datetime.now(),
             outputs={
                 'benchmark_results': all_results,
                 'results_db_path': str(results_db_path),
@@ -288,7 +299,7 @@ def create_benchmarking_stage(
         name='benchmarking',
         execute_fn=execute,
         required_inputs=['graphs'],
-        expected_outputs=['benchmark_results', 'results_db_path', 'num_results']
+        output_keys=['benchmark_results', 'results_db_path', 'num_results']
     )
 
 
@@ -436,7 +447,9 @@ def create_feature_extraction_stage(
             final_path = f"{output_path}.pkl"
 
         return StageResult(
-            success=True,
+            stage_name='feature_extraction',
+            status=StageStatus.RUNNING,
+            start_time=datetime.now(),
             outputs={
                 'feature_dataset_path': final_path,
                 'feature_names': feature_names,
@@ -454,7 +467,7 @@ def create_feature_extraction_stage(
         name='feature_extraction',
         execute_fn=execute,
         required_inputs=['graphs', 'benchmark_results'],
-        expected_outputs=['feature_dataset_path', 'feature_names', 'num_features']
+        output_keys=['feature_dataset_path', 'feature_names', 'num_features']
     )
 
 
@@ -602,7 +615,9 @@ def create_training_stage(
         best_model_path = trained_models[best_model_idx]['path']
 
         return StageResult(
-            success=True,
+            stage_name='training',
+            status=StageStatus.RUNNING,
+            start_time=datetime.now(),
             outputs={
                 'trained_models': trained_models,
                 'model_paths': model_paths,
@@ -622,7 +637,7 @@ def create_training_stage(
         name='training',
         execute_fn=execute,
         required_inputs=['feature_dataset_path', 'feature_names'],
-        expected_outputs=['trained_models', 'model_paths', 'best_model_path']
+        output_keys=['trained_models', 'model_paths', 'best_model_path']
     )
 
 
@@ -735,7 +750,9 @@ def create_evaluation_stage(
         }
 
         return StageResult(
-            success=True,
+            stage_name='evaluation',
+            status=StageStatus.RUNNING,
+            start_time=datetime.now(),
             outputs={
                 'evaluation_report': summary,
                 'report_path': str(report_path),
@@ -748,5 +765,5 @@ def create_evaluation_stage(
         name='evaluation',
         execute_fn=execute,
         required_inputs=['graphs', 'best_model_path', 'feature_names'],
-        expected_outputs=['evaluation_report', 'report_path']
+        output_keys=['evaluation_report', 'report_path']
     )

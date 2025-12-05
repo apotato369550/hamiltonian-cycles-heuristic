@@ -61,22 +61,33 @@ def main():
         return
 
     # Setup experiment tracking
-    output_dir = Path(config.get('experiment.output_dir'))
+    from pipeline.tracking import ExperimentRegistry
+
+    registry = ExperimentRegistry(Path("experiments/registry.json"))
+    exp_id = registry.generate_experiment_id(config.name)
+
+    output_dir = Path(config.output_dir) / exp_id
     output_dir.mkdir(parents=True, exist_ok=True)
 
-    print(f"\nExperiment: {config.get('experiment.name')}")
+    print(f"\nExperiment: {config.name}")
+    print(f"Experiment ID: {exp_id}")
     print(f"Output directory: {output_dir}")
 
-    tracker = ExperimentTracker(experiment_dir=output_dir)
+    tracker = ExperimentTracker(
+        experiment_id=exp_id,
+        name=config.name,
+        description=config.description,
+        config=config.to_dict(),
+        output_dir=output_dir
+    )
     tracker.start()
 
     # Setup reproducibility
-    repro_manager = ReproducibilityManager(
-        master_seed=config.get('experiment.random_seed'),
-        git_tracking=True
-    )
+    repro_manager = ReproducibilityManager(master_seed=config.random_seed)
+    repro_manager.initialize()  # Set all random seeds
 
-    print(f"Random seed: {repro_manager.master_seed}")
+    print(f"Random seed: {repro_manager.seed_manager.master_seed}")
+    print(f"Git commit: {repro_manager.git_commit[:8] if repro_manager.git_commit else 'N/A'}")
 
     # Create pipeline stages
     stages = []
@@ -106,7 +117,7 @@ def main():
         return
 
     # Create orchestrator
-    orchestrator = PipelineOrchestrator()
+    orchestrator = PipelineOrchestrator(experiment_dir=output_dir)
     for stage in stages:
         orchestrator.add_stage(stage)
 
@@ -121,7 +132,7 @@ def main():
         result = orchestrator.run_stage(args.stage, {})
     else:
         # Run complete pipeline
-        result = orchestrator.run_all()
+        result = orchestrator.run()
 
     # Complete tracking
     tracker.complete(status="success" if result.success else "failed")

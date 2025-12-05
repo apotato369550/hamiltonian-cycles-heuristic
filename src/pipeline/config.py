@@ -18,6 +18,7 @@ class GraphGenConfig:
     graph_types: List[Dict[str, Any]] = field(default_factory=list)
     output_dir: str = "data/graphs"
     save_format: str = "json"  # or "pickle"
+    batch_name: Optional[str] = None  # Optional batch name for organizing graphs
 
     def validate(self) -> List[str]:
         """Validate configuration. Returns list of errors."""
@@ -51,6 +52,8 @@ class BenchmarkConfig:
     timeout_seconds: Optional[float] = 300.0
     output_dir: str = "results/benchmarks"
     save_format: str = "json"  # or "csv", "sqlite"
+    exhaustive_anchors: bool = False  # Test all possible anchors for label generation
+    storage_format: Optional[str] = None  # Alternative to save_format
 
     def validate(self) -> List[str]:
         """Validate configuration. Returns list of errors."""
@@ -75,8 +78,16 @@ class FeatureConfig:
     enabled: bool = True
     feature_groups: List[str] = field(default_factory=list)
     labeling_strategy: str = "rank_based"
+    labeling_params: Optional[Dict[str, Any]] = None  # Parameters for labeling strategy
     output_dir: str = "results/features"
     save_format: str = "csv"  # or "parquet"
+    output_format: Optional[str] = None  # Alternative to save_format
+
+    def __post_init__(self):
+        """Handle alternative field names."""
+        # Use output_format if save_format not explicitly set
+        if self.output_format and self.save_format == "csv":
+            self.save_format = self.output_format
 
     def validate(self) -> List[str]:
         """Validate configuration. Returns list of errors."""
@@ -124,6 +135,10 @@ class ModelConfig:
     test_ratio: float = 0.15
     output_dir: str = "models"
     save_models: bool = True
+    problem_type: Optional[str] = "regression"  # regression, classification, ranking
+    test_split: Optional[float] = None  # Alternative to test_ratio
+    stratify_by: Optional[str] = None  # Stratification column
+    cross_validation: Optional[Dict[str, Any]] = None  # CV configuration
 
     def validate(self) -> List[str]:
         """Validate configuration. Returns list of errors."""
@@ -148,7 +163,7 @@ class ModelConfig:
                 f"split_strategy must be one of {valid_strategies}"
             )
 
-        # Check ratios sum to 1.0
+        # Check ratios sum to 1.0 (if all specified)
         total_ratio = self.train_ratio + self.val_ratio + self.test_ratio
         if abs(total_ratio - 1.0) > 1e-6:
             errors.append(
@@ -190,17 +205,38 @@ class ExperimentConfig:
         Returns:
             ExperimentConfig instance
         """
-        # Extract top-level fields
-        name = config_dict.get('name', 'unnamed_experiment')
-        description = config_dict.get('description', '')
-        random_seed = config_dict.get('random_seed', 42)
-        output_dir = config_dict.get('output_dir', 'experiments')
+        # Handle 'experiment' wrapper if present
+        if 'experiment' in config_dict:
+            exp_data = config_dict['experiment']
+            name = exp_data.get('name', 'unnamed_experiment')
+            description = exp_data.get('description', '')
+            random_seed = exp_data.get('random_seed', 42)
+            output_dir = exp_data.get('output_dir', 'experiments')
+        else:
+            # Extract top-level fields
+            name = config_dict.get('name', 'unnamed_experiment')
+            description = config_dict.get('description', '')
+            random_seed = config_dict.get('random_seed', 42)
+            output_dir = config_dict.get('output_dir', 'experiments')
 
-        # Extract stage configs
-        graph_gen = GraphGenConfig(**config_dict.get('graph_generation', {}))
+        # Extract stage configs, handling 'types' alias for 'graph_types'
+        graph_gen_dict = config_dict.get('graph_generation', {})
+        if 'types' in graph_gen_dict and 'graph_types' not in graph_gen_dict:
+            graph_gen_dict['graph_types'] = graph_gen_dict.pop('types')
+        graph_gen = GraphGenConfig(**graph_gen_dict)
+
         benchmark = BenchmarkConfig(**config_dict.get('benchmarking', {}))
-        feature = FeatureConfig(**config_dict.get('feature_engineering', {}))
-        model = ModelConfig(**config_dict.get('model_training', {}))
+
+        # Handle 'feature_extraction' alias for 'feature_engineering'
+        feature_dict = config_dict.get('feature_engineering', config_dict.get('feature_extraction', {}))
+        # Handle 'extractors' alias for 'feature_groups'
+        if 'extractors' in feature_dict and 'feature_groups' not in feature_dict:
+            feature_dict['feature_groups'] = feature_dict.pop('extractors')
+        feature = FeatureConfig(**feature_dict)
+
+        # Handle 'training' alias for 'model_training'
+        model_dict = config_dict.get('model_training', config_dict.get('training', {}))
+        model = ModelConfig(**model_dict)
 
         return cls(
             name=name,
@@ -242,6 +278,45 @@ class ExperimentConfig:
         """
         with open(yaml_path, 'w') as f:
             yaml.dump(self.to_dict(), f, default_flow_style=False, indent=2)
+
+    def get(self, key: str, default: Any = None) -> Any:
+        """
+        Get configuration value using dot notation.
+
+        Args:
+            key: Configuration key in dot notation (e.g., 'experiment.name' or 'name')
+            default: Default value if key not found
+
+        Returns:
+            Configuration value or default
+        """
+        # Handle 'experiment.' prefix by stripping it (for backward compatibility)
+        if key.startswith('experiment.'):
+            key = key[11:]  # Remove 'experiment.' prefix
+
+        # Handle field aliases
+        aliases = {
+            'feature_extraction': 'feature_engineering',
+            'training': 'model_training'
+        }
+
+        parts = key.split('.')
+        if parts[0] in aliases:
+            parts[0] = aliases[parts[0]]
+
+        value = self
+
+        for part in parts:
+            if hasattr(value, part):
+                value = getattr(value, part)
+            elif isinstance(value, dict):
+                value = value.get(part, default)
+                if value == default:
+                    return default
+            else:
+                return default
+
+        return value
 
     def validate(self) -> List[str]:
         """

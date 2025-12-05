@@ -1,25 +1,21 @@
-# TSP Anchor-Based Heuristic Research Platform
-# Core dependencies for all phases
-
-# Core scientific computing (Phase 1, 2, 3, 4, 5)
-numpy>=1.24.0,<2.0.0
-scipy>=1.10.0,<2.0.0
-matplotlib>=3.7.0,<4.0.0
-
-# Configuration management (Phase 5)
-pyyaml>=6.0,<7.0
-
-# Machine Learning (Phase 3, 4)
-pandas>=2.0.0,<3.0.0
-scikit-learn>=1.3.0,<2.0.0
-
-# Performance monitoring (Phase 5)
-psutil>=5.9.0,<6.0.0
-
-# Testing (optional, using unittest from stdlib)
-# pytest>=7.4.0,<8.0.0
-
-# Development tools (optional)
-# black>=23.0.0  # Code formatting
-# flake8>=6.0.0  # Linting
-# mypy>=1.0.0    # Type checking
+contourpy==1.3.3
+cycler==0.12.1
+fonttools==4.61.0
+joblib==1.5.2
+kiwisolver==1.4.9
+matplotlib==3.10.7
+numpy==1.26.4
+packaging==25.0
+pandas==2.3.3
+pillow==12.0.0
+psutil==5.9.8
+pyparsing==3.2.5
+python-dateutil==2.9.0.post0
+pytz==2025.2
+PyYAML==6.0.3
+scikit-learn==1.7.2
+scipy==1.16.3
+seaborn==0.13.2
+six==1.17.0
+threadpoolctl==3.6.0
+tzdata==2025.2
