@@ -34,9 +34,11 @@ from .registry import AlgorithmRegistry, register_algorithm
 # Import algorithm implementations to trigger @register_algorithm decorators
 # This ensures algorithms are registered when the package is imported
 from . import nearest_neighbor
+from . import nearest_neighbor_adaptive
 from . import greedy
 from . import exact
 from . import single_anchor
+from . import single_anchor_v3
 from . import best_anchor
 from . import multi_anchor
 

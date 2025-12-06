@@ -96,15 +96,19 @@ def create_graph_generation_stage(
                             dimensions=graph_spec.get('dimension', 2),
                             weight_range=weight_range
                         )
-                        # Create GraphInstance
-                        from graph_generation.graph_instance import GraphInstance
-                        graph = GraphInstance(
+                        # Create GraphInstance using factory function
+                        from graph_generation.graph_instance import create_graph_instance
+                        graph = create_graph_instance(
                             adjacency_matrix=adjacency_matrix,
-                            metadata={
-                                'type': 'euclidean',
-                                'seed': instance_seed,
-                                'coordinates': coordinates
-                            }
+                            graph_type='euclidean',
+                            generation_params={
+                                'size': size,
+                                'dimensions': graph_spec.get('dimension', 2),
+                                'weight_range': weight_range
+                            },
+                            random_seed=instance_seed,
+                            coordinates=coordinates,
+                            verify=True
                         )
                     elif graph_type == 'metric':
                         adjacency_matrix = generate_metric_graph(
@@ -113,10 +117,17 @@ def create_graph_generation_stage(
                             random_seed=instance_seed,
                             strategy=graph_spec.get('strategy', 'completion')
                         )
-                        from graph_generation.graph_instance import GraphInstance
-                        graph = GraphInstance(
+                        from graph_generation.graph_instance import create_graph_instance
+                        graph = create_graph_instance(
                             adjacency_matrix=adjacency_matrix,
-                            metadata={'type': 'metric', 'seed': instance_seed}
+                            graph_type='metric',
+                            generation_params={
+                                'size': size,
+                                'weight_range': weight_range,
+                                'strategy': graph_spec.get('strategy', 'completion')
+                            },
+                            random_seed=instance_seed,
+                            verify=True
                         )
                     elif graph_type == 'quasi_metric':
                         adjacency_matrix = generate_quasi_metric_graph(
@@ -124,10 +135,16 @@ def create_graph_generation_stage(
                             weight_range=weight_range,
                             random_seed=instance_seed
                         )
-                        from graph_generation.graph_instance import GraphInstance
-                        graph = GraphInstance(
+                        from graph_generation.graph_instance import create_graph_instance
+                        graph = create_graph_instance(
                             adjacency_matrix=adjacency_matrix,
-                            metadata={'type': 'quasi_metric', 'seed': instance_seed}
+                            graph_type='quasi_metric',
+                            generation_params={
+                                'size': size,
+                                'weight_range': weight_range
+                            },
+                            random_seed=instance_seed,
+                            verify=True
                         )
                     elif graph_type == 'random':
                         adjacency_matrix = generate_random_graph(
@@ -136,10 +153,17 @@ def create_graph_generation_stage(
                             random_seed=instance_seed,
                             distribution=graph_spec.get('distribution', 'uniform')
                         )
-                        from graph_generation.graph_instance import GraphInstance
-                        graph = GraphInstance(
+                        from graph_generation.graph_instance import create_graph_instance
+                        graph = create_graph_instance(
                             adjacency_matrix=adjacency_matrix,
-                            metadata={'type': 'random', 'seed': instance_seed}
+                            graph_type='random',
+                            generation_params={
+                                'size': size,
+                                'weight_range': weight_range,
+                                'distribution': graph_spec.get('distribution', 'uniform')
+                            },
+                            random_seed=instance_seed,
+                            verify=False  # Random graphs don't need verification
                         )
                     else:
                         raise ValueError(f"Unknown graph type: {graph_type}")
@@ -239,8 +263,8 @@ def create_benchmarking_stage(
         # Benchmark each algorithm on each graph
         for graph_idx, graph in enumerate(graphs):
             graph_id = f"graph_{graph_idx:04d}"
-            graph_type = graph.metadata.get('type', 'unknown')
-            graph_size = graph.n_vertices
+            graph_type = graph.metadata.graph_type
+            graph_size = graph.get_num_vertices()
 
             for algo_spec in algo_specs:
                 algo_name = algo_spec['name']
@@ -251,7 +275,7 @@ def create_benchmarking_stage(
 
                 if exhaustive_anchors and 'anchor' in algo_name:
                     # Test all possible anchors for labeling
-                    for anchor_vertex in range(graph.n_vertices):
+                    for anchor_vertex in range(graph.get_num_vertices()):
                         start_time = time.time()
                         try:
                             result = algo.solve(
@@ -442,7 +466,7 @@ def create_feature_extraction_stage(
                     if r['tour_weight'] is not None
                 ]
 
-                if len(anchor_weights) == graph.n_vertices:
+                if len(anchor_weights) == graph.get_num_vertices():
                     labeler = AnchorQualityLabeler(
                         strategy=labeling_strategy,
                         **labeling_params
@@ -450,19 +474,19 @@ def create_feature_extraction_stage(
                     labels = labeler.label_from_weights(anchor_weights)
                 else:
                     # Not all anchors have valid results
-                    labels = np.zeros(graph.n_vertices)
+                    labels = np.zeros(graph.get_num_vertices())
             else:
-                labels = np.zeros(graph.n_vertices)  # No labels available
+                labels = np.zeros(graph.get_num_vertices())  # No labels available
 
             # Store per-vertex features
-            for vertex_idx in range(graph.n_vertices):
+            for vertex_idx in range(graph.get_num_vertices()):
                 all_features.append(features[vertex_idx])
                 all_labels.append(labels[vertex_idx])
                 all_metadata.append({
                     'graph_id': graph_id,
                     'vertex_id': vertex_idx,
-                    'graph_type': graph.metadata.get('type', 'unknown'),
-                    'graph_size': graph.n_vertices
+                    'graph_type': graph.metadata.graph_type,
+                    'graph_size': graph.get_num_vertices()
                 })
 
         # Save features
@@ -761,14 +785,14 @@ def create_evaluation_stage(
             nn_algo = get_algorithm('nearest_neighbor')
             nn_result = nn_algo.solve(graph.adjacency_matrix)
 
-            random_anchor = np.random.RandomState(seed).randint(0, graph.n_vertices)
+            random_anchor = np.random.RandomState(seed).randint(0, graph.get_num_vertices())
             random_result = algo.solve(graph.adjacency_matrix, anchor_vertex=random_anchor)
 
             # Record results
             results.append({
                 'graph_id': graph_id,
-                'graph_type': graph.metadata.get('type', 'unknown'),
-                'graph_size': graph.n_vertices,
+                'graph_type': graph.metadata.graph_type,
+                'graph_size': graph.get_num_vertices(),
                 'predicted_anchor': predicted_anchor,
                 'predicted_anchor_tour': predicted_result.weight,
                 'random_anchor': random_anchor,

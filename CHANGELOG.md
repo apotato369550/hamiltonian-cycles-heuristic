@@ -9,6 +9,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 ## [Unreleased]
 
 ### Added
+- Created `src/algorithms/nearest_neighbor_adaptive.py` - Adaptive nearest neighbor with both-ends path building (2025-12-06)
+- Created `src/algorithms/single_anchor_v3.py` - Single anchor v3 with adaptive both-ends strategy (2025-12-06)
+- Created `experiments/benchmark_algorithms.py` - Standalone benchmarking script for testing algorithms (2025-12-06)
 - Created `requirements.txt` with all project dependencies (2025-11-28)
 - Created `CHANGELOG.md` to track code updates (2025-11-28)
 - Created `experiments/run_experiment.py` - CLI entry point for running experiments (2025-12-05)
@@ -18,8 +21,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 - Created `experiments/README.md` - CLI documentation and usage guide (2025-12-05)
 
 ### Changed
+- Updated `src/algorithms/__init__.py` to register new algorithms (2025-12-06)
+- Updated `src/algorithms/CLAUDE.md` to document new algorithms and update version to 1.2.0 (2025-12-06)
+- Updated `README.md` to reflect 10 implemented algorithms (2025-12-06)
 - Updated root `CLAUDE.md` to reflect Phase 5 actual completion status (2025-11-28)
-- Updated `README.md` to reflect current research platform status (2025-11-28)
 - Updated `src/pipeline/CLAUDE.md` to document Prompts 5-8 implementation (2025-11-28)
 
 ### Fixed

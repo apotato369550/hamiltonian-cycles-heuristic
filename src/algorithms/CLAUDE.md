@@ -1,10 +1,10 @@
 # Algorithm Benchmarking System (Phase 2)
 
 ## Purpose
-Core algorithm benchmarking infrastructure for TSP research platform. Implements unified algorithm interface, tour validation, quality metrics, and 8 TSP algorithms (3 baselines + 5 anchor-based heuristics).
+Core algorithm benchmarking infrastructure for TSP research platform. Implements unified algorithm interface, tour validation, quality metrics, and 10 TSP algorithms (3 baselines + 7 anchor-based/adaptive heuristics).
 
-**Status**: Steps 1-4 COMPLETE (validated 11-05-2025)
-**Test Coverage**: 89 tests, 100% pass rate
+**Status**: Steps 1-4 COMPLETE (validated 11-05-2025), 2 new algorithms added (12-06-2025)
+**Test Coverage**: 89 tests, 100% pass rate (new algorithms pending tests)
 
 ---
 
@@ -12,18 +12,20 @@ Core algorithm benchmarking infrastructure for TSP research platform. Implements
 
 ```
 algorithms/
-├── CLAUDE.md                    # This file - package documentation
-├── __init__.py                  # Package initialization, exports, auto-registration
-├── base.py                      # Core interfaces and data structures
-├── registry.py                  # Algorithm registration system
-├── validation.py                # Tour validation functions
-├── metrics.py                   # Quality metrics computation
-├── nearest_neighbor.py          # NN baseline (2 variants)
-├── greedy.py                    # Greedy edge-picking baseline
-├── exact.py                     # Held-Karp exact solver
-├── single_anchor.py             # Single anchor heuristic (v1 and v2)
-├── best_anchor.py               # Best anchor search
-└── multi_anchor.py              # Multi-anchor heuristics (2 variants)
+├── CLAUDE.md                       # This file - package documentation
+├── __init__.py                     # Package initialization, exports, auto-registration
+├── base.py                         # Core interfaces and data structures
+├── registry.py                     # Algorithm registration system
+├── validation.py                   # Tour validation functions
+├── metrics.py                      # Quality metrics computation
+├── nearest_neighbor.py             # NN baseline (2 variants)
+├── nearest_neighbor_adaptive.py    # Adaptive NN (both-ends path building)
+├── greedy.py                       # Greedy edge-picking baseline
+├── exact.py                        # Held-Karp exact solver
+├── single_anchor.py                # Single anchor heuristic (v1 and v2)
+├── single_anchor_v3.py             # Single anchor v3 (adaptive both-ends)
+├── best_anchor.py                  # Best anchor search
+└── multi_anchor.py                 # Multi-anchor heuristics (2 variants)
 ```
 
 ---
@@ -123,6 +125,16 @@ result = algo.solve(adjacency_matrix)
 **Features**: Deterministic tie-breaking, reproducible with seeds
 **Tags**: `["baseline", "greedy", "nearest_neighbor"]`
 
+#### 1a. Adaptive Nearest Neighbor (nearest_neighbor_adaptive.py) **NEW**
+**Algorithm**: Path-building from both ends using Prim-like strategy
+
+**Strategy**: Similar to Prim's algorithm but with degree constraints to ensure Hamiltonian cycle. At each step, checks both ends of current path and extends from the end with cheaper connection.
+
+**Complexity**: O(n²)
+**Features**: Adaptive greedy selection, deterministic tie-breaking
+**Tags**: `["heuristic", "greedy", "nearest_neighbor", "adaptive"]`
+**Added**: 12-06-2025
+
 #### 2. Greedy Edge (greedy.py)
 **Algorithm**: Iteratively add cheapest edges maintaining cycle constraints
 
@@ -149,11 +161,25 @@ result = algo.solve(adjacency_matrix)
 **Variants**:
 - `single_anchor_v1`: Single direction (entrance → exit)
 - `single_anchor_v2`: Bidirectional (tries both directions, returns best)
+- `single_anchor_v3`: Adaptive both-ends path building **NEW**
 
-**Complexity**: O(n²) for v1, O(2n²) for v2
+**Complexity**: O(n²) for v1, O(2n²) for v2, O(n²) for v3
 **Parameters**: `anchor_vertex` (which vertex to use)
 **Metadata**: Tracks anchor vertex, neighbors, edge weights
-**Tags**: `["anchor", "heuristic"]` for v1, `["anchor", "heuristic", "bidirectional"]` for v2
+**Tags**: `["anchor", "heuristic"]` for v1, `["anchor", "heuristic", "bidirectional"]` for v2, `["anchor", "heuristic", "adaptive"]` for v3
+
+#### 4a. Single Anchor V3 Details (single_anchor_v3.py) **NEW**
+**Strategy**: Fix cheapest anchor edges first, then build adaptively from both ends
+
+**Algorithm**:
+1. Fix two cheapest edges from anchor vertex to neighbors
+2. Build path between neighbors by checking both ends
+3. Extend from end with cheaper connection (similar to Prim's)
+
+**Complexity**: O(n²)
+**Features**: Combines anchor commitment with adaptive path building
+**Tags**: `["anchor", "heuristic", "adaptive"]`
+**Added**: 12-06-2025
 
 #### 5. Best Anchor (best_anchor.py)
 **Strategy**: Try single anchor from each vertex, return best
@@ -302,9 +328,12 @@ python3 -m unittest discover -s src/tests -p "test_*.py"
 |-----------|------|-------|-----------------|
 | NN Random | O(n²) | O(n) | n ≤ 1000 |
 | NN Best | O(n³) | O(n) | n ≤ 500 |
+| NN Adaptive | O(n²) | O(n) | n ≤ 1000 |
 | Greedy | O(n² log n) | O(n) | n ≤ 1000 |
 | Held-Karp | O(n² × 2^n) | O(n × 2^n) | n ≤ 18 |
-| Single Anchor | O(n²) | O(n) | n ≤ 1000 |
+| Single Anchor V1 | O(n²) | O(n) | n ≤ 1000 |
+| Single Anchor V2 | O(2n²) | O(n) | n ≤ 1000 |
+| Single Anchor V3 | O(n²) | O(n) | n ≤ 1000 |
 | Best Anchor | O(n³) | O(n) | n ≤ 500 |
 | Multi-Anchor | O(n²) | O(n) | n ≤ 1000 |
 
@@ -371,11 +400,12 @@ class MyAlgorithm(TSPAlgorithm):
 
 ---
 
-**Package Version**: 1.1.0
-**Last Updated**: 11-13-2025
-**Status**: Production Ready (Steps 1-4 complete, validated)
+**Package Version**: 1.2.0
+**Last Updated**: 12-06-2025
+**Status**: Production Ready (Steps 1-4 complete, 2 new algorithms added)
 **Maintainers**: Builder (implementation), Validator (verification)
 
 **Changelog**:
+- v1.2.0 (12-06-2025): Added nearest_neighbor_adaptive and single_anchor_v3 algorithms (adaptive both-ends path building)
 - v1.1.0 (11-13-2025): Auto-registration in __init__.py, test consolidation, single_anchor v1/v2 clarification
 - v1.0.0 (11-05-2025): Initial release with all Phase 2 Steps 1-4 algorithms

@@ -20,7 +20,7 @@ The platform combines:
 | Phase | Status | Implementation | Tests |
 |-------|--------|----------------|-------|
 | **Phase 1**: Graph Generation | ✅ Complete | 100% | 34 tests |
-| **Phase 2**: Algorithm Benchmarking | ✅ Complete | 100% | 89 tests |
+| **Phase 2**: Algorithm Benchmarking | ✅ Complete (10 algos) | 100% | 89 tests* |
 | **Phase 3**: Feature Engineering | ✅ Complete | 100% (12/12 prompts) | 111 tests |
 | **Phase 4**: Machine Learning | ✅ Complete | 100% (8/8 prompts) | 96 tests |
 | **Phase 5**: Pipeline Integration | 🟡 Ready for Use | 67% (8/12 prompts) + CLI | 45 tests |
@@ -44,12 +44,13 @@ The platform combines:
 - **34 comprehensive tests**
 
 ### Phase 2: Algorithm Benchmarking ✅
-- **Algorithms**: 8 implemented
-  - Baselines: Nearest Neighbor (2 variants), Greedy Edge, Held-Karp Exact
-  - Anchor-based: Single Anchor (2 variants), Best Anchor, Multi-Anchor (2 variants)
+- **Algorithms**: 10 implemented (2 new added 12-06-2025)
+  - Baselines: Nearest Neighbor (2 variants), Adaptive NN, Greedy Edge, Held-Karp Exact
+  - Anchor-based: Single Anchor (3 variants including v3), Best Anchor, Multi-Anchor (2 variants)
+  - **New**: `nearest_neighbor_adaptive` and `single_anchor_v3` (adaptive both-ends path building)
 - **Validation**: All tours verified as valid Hamiltonian cycles
 - **Metrics**: Tour quality, runtime, optimality gaps
-- **89 comprehensive tests**
+- **89 comprehensive tests** (new algorithms pending tests)
 
 ### Phase 3: Feature Engineering ✅
 - **6 Feature Extractors**:
