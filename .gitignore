@@ -28,11 +28,17 @@ env.bak/
 *.swp
 
 # Output / data
+data/
+results/
+graphs/
+
+# Archive (too large for git)
+archive/v1_overengineered/
+
+# JSON and txt files
 *.json
 *.txt
 !requirements.txt
-results/
-graphs/
 
 # OS-specific
 .DS_Store
