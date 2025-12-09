@@ -14,7 +14,8 @@ from sklearn.linear_model import LinearRegression
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from src.algorithms import get_algorithm
+from src.algorithms.registry import AlgorithmRegistry
+import src.algorithms  # Auto-registers all algorithms
 
 
 def main():
@@ -63,8 +64,8 @@ def main():
 
     results = []
 
-    single_anchor = get_algorithm("single_anchor")
-    nearest_neighbor = get_algorithm("nearest_neighbor")
+    single_anchor = AlgorithmRegistry.get_algorithm("single_anchor_v1")
+    nearest_neighbor = AlgorithmRegistry.get_algorithm("nearest_neighbor_best")
 
     for graph_id in test_graph_ids:
         graph_meta = graphs_metadata[graph_id]
@@ -84,13 +85,18 @@ def main():
         predicted_vertex = test_stats.iloc[np.argmax(predictions)]["vertex_id"]
 
         # Random anchor
-        random_vertex = np.random.choice(list(graph.nodes()))
+        random_vertex = np.random.choice(len(graph))
 
         # Test all three
-        tour_best, weight_best = single_anchor(graph, start_vertex=int(best_vertex))
-        tour_pred, weight_pred = single_anchor(graph, start_vertex=int(predicted_vertex))
-        tour_rand, weight_rand = single_anchor(graph, start_vertex=int(random_vertex))
-        tour_nn, weight_nn = nearest_neighbor(graph)
+        result_best = single_anchor.solve(graph, anchor_vertex=int(best_vertex))
+        result_pred = single_anchor.solve(graph, anchor_vertex=int(predicted_vertex))
+        result_rand = single_anchor.solve(graph, anchor_vertex=int(random_vertex))
+        result_nn = nearest_neighbor.solve(graph)
+
+        weight_best = result_best.weight if result_best.success else float('inf')
+        weight_pred = result_pred.weight if result_pred.success else float('inf')
+        weight_rand = result_rand.weight if result_rand.success else float('inf')
+        weight_nn = result_nn.weight if result_nn.success else float('inf')
 
         # Calculate improvements
         improvement_pred = ((weight_rand - weight_pred) / weight_rand) * 100

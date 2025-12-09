@@ -8,10 +8,11 @@ import json
 import pickle
 import pandas as pd
 from pathlib import Path
+import networkx as nx
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from src.analysis import compute_all_vertex_stats
+from src.analysis.edge_statistics import compute_all_vertex_stats
 
 
 def main():
@@ -40,7 +41,15 @@ def main():
                 graph = pickle.load(f)
 
             # Compute edge statistics for all vertices
-            stats = compute_all_vertex_stats(graph)
+            # Convert adjacency matrix to NetworkX graph for feature extraction
+            G = nx.Graph()
+            n = len(graph)
+            for i in range(n):
+                for j in range(n):
+                    if i != j:
+                        G.add_edge(i, j, weight=graph[i][j])
+
+            stats = compute_all_vertex_stats(G)
 
             # Add graph metadata
             for stat in stats:

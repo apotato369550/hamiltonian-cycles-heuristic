@@ -10,7 +10,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from src.analysis import correlation_analysis
+from src.analysis.anchor_analysis import correlation_analysis
 
 
 def main():

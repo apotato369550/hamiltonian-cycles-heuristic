@@ -11,24 +11,26 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from src.algorithms import get_algorithm
+from src.algorithms.registry import AlgorithmRegistry
+import src.algorithms  # Auto-registers all algorithms
 
 def compute_anchor_quality_for_graph(graph, graph_id, graph_type):
     """Run single_anchor from each vertex and return quality DataFrame."""
     results = []
 
-    algorithm = get_algorithm("single_anchor")
+    algorithm = AlgorithmRegistry.get_algorithm("single_anchor_v1")
 
-    for vertex in graph.nodes():
+    for vertex in range(len(graph)):
         try:
-            tour, weight = algorithm(graph, start_vertex=vertex)
+            result = algorithm.solve(graph, anchor_vertex=vertex)
 
-            results.append({
-                "graph_id": graph_id,
-                "graph_type": graph_type,
-                "vertex_id": vertex,
-                "tour_weight": weight,
-            })
+            if result.success:
+                results.append({
+                    "graph_id": graph_id,
+                    "graph_type": graph_type,
+                    "vertex_id": vertex,
+                    "tour_weight": result.weight,
+                })
         except Exception as e:
             print(f"    ⚠️  Failed to compute anchor quality for vertex {vertex}: {e}")
             continue

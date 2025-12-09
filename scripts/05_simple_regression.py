@@ -10,7 +10,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from src.analysis import simple_regression
+from src.analysis.anchor_analysis import simple_regression
 
 
 def main():

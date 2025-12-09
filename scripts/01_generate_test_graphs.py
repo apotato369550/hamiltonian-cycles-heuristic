@@ -43,12 +43,12 @@ def generate_test_graphs():
             try:
                 # Generate graph based on type
                 if graph_type_func == "euclidean":
-                    gen = EuclideanGraphGenerator(
+                    gen = EuclideanGraphGenerator(random_seed=1000 + graph_id)
+                    adjacency_matrix, coords = gen.generate(
                         num_vertices=num_vertices,
                         weight_range=(1.0, 100.0),
-                        seed=1000 + graph_id,
                     )
-                    graph = gen.generate()
+                    graph = adjacency_matrix
                 elif graph_type_func == "metric":
                     graph = generate_metric_graph(
                         num_vertices=num_vertices,
