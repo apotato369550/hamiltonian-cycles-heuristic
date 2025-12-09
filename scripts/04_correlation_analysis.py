@@ -75,11 +75,11 @@ def main():
     fig, axes = plt.subplots(2, 2, figsize=(12, 10))
     axes = axes.flatten()
 
-    for idx, row in corr_df.head(4).iterrows():
+    for plot_idx, (idx, row) in enumerate(corr_df.head(4).iterrows()):
         feature = row["feature"]
         corr = row["correlation"]
 
-        ax = axes[idx]
+        ax = axes[plot_idx]
         ax.scatter(merged[feature], merged["percentile"], alpha=0.5, s=30)
         ax.set_xlabel(feature)
         ax.set_ylabel("Anchor Quality (Percentile)")

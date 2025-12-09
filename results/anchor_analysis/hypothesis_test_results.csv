@@ -1,0 +1,4 @@
+hypothesis,test,f_statistic,p_value,significant,improvement_percent
+High Weight → Better Anchors,ANOVA,1.2508911583206874,0.28963038227465415,False,
+High Variance → Better Anchors,ANOVA,0.13466024130592716,0.9394111458614861,False,
+High Weight + High Variance → Best Anchors,Group Comparison,,,False,-0.8452234459012808

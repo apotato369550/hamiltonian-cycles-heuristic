@@ -29,7 +29,6 @@ env.bak/
 
 # Output / data
 data/
-results/
 graphs/
 
 # Archive (too large for git)

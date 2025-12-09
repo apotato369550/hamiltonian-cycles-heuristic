@@ -259,3 +259,82 @@ from src.analysis.anchor_analysis import simple_regression
 ✅ Pipeline verified working with fixed code
 
 Ready to run: `python3 scripts/run_full_analysis.py`
+
+---
+
+## Additional Fixes Applied (Round 3)
+
+**Date:** December 9, 2025
+**Issues:** NetworkX import + DataFrame iteration indexing
+
+---
+
+## Problem 7: Missing NetworkX Import
+
+**Error:**
+```
+ModuleNotFoundError: No module named 'networkx'
+```
+
+**Root Cause:**
+- NetworkX was used in Phase 3 but not imported at module level
+- Inline import was removed during refactoring
+
+**Files Fixed:**
+- `scripts/03_extract_edge_statistics.py`
+
+**Changes:**
+```python
+# BEFORE (incorrect)
+# networkx not imported, inline import removed
+
+# AFTER (correct)
+import networkx as nx  # Added at module level
+```
+
+---
+
+## Problem 8: DataFrame Index vs Loop Counter
+
+**Error:**
+```
+IndexError: index 8 is out of bounds for axis 0 with size 4
+```
+
+**Root Cause:**
+- `iterrows()` returns DataFrame index (0, 1, 2, ...) not loop counter
+- When DataFrame has been sorted, indices may not be sequential
+- Code tried to use DataFrame index as array index directly
+
+**Files Fixed:**
+- `scripts/04_correlation_analysis.py`
+
+**Changes:**
+```python
+# BEFORE (incorrect)
+for idx, row in corr_df.head(4).iterrows():
+    ax = axes[idx]  # idx is DataFrame index, not loop counter
+
+# AFTER (correct)
+for plot_idx, (idx, row) in enumerate(corr_df.head(4).iterrows()):
+    ax = axes[plot_idx]  # plot_idx is sequential 0,1,2,3
+```
+
+---
+
+## Summary of Round 3 Fixes
+
+| File | Issue | Fix |
+|------|-------|-----|
+| `03_extract_edge_statistics.py` | Missing import | Add `import networkx as nx` at module level |
+| `04_correlation_analysis.py` | Index mismatch | Use `enumerate()` to get sequential loop counter |
+
+---
+
+## All Fixes Complete
+
+✅ Total: 8 API/import issues + 2 runtime issues = 10 issues resolved
+✅ All 8 analysis phases now validated
+✅ Pipeline ready for full execution
+
+Ready to run: `python3 scripts/run_full_analysis.py`
